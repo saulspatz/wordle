@@ -41,14 +41,21 @@ canvas = MyCanvas(root, width=WIDTH, height=HEIGHT, background = BACKGROUND)
 canvas.pack()
 
 squares = {}
+letters = {}
 y = TOP_MARGIN
 leftMargin = WIDTH//2 - 2*(SQUARE+SPACE) - SQUARE//2
 for row in range(6):
     x = leftMargin
     for col in range(5):
         squares[row,col] = canvas.create_rounded_rectangle(x, y, x+SQUARE, y+SQUARE,  outline = OUTLINE)
+        letters[row, col] = canvas.create_text(x+SQUARE//2, y+SQUARE//2, font = ('Helvetica', '24', 'bold' ), 
+                                               justify=tk.CENTER,  fill = FOREGROUND, tag = f'L{row}{col}')
         x += SQUARE+SPACE
     y += SQUARE+SPACE
+    
+letters = {}
+
+
 
 class Wordle():
     def __init__(self):
@@ -69,7 +76,7 @@ class Wordle():
             word += canvas.itemcget(tag, 'text')
         word = word.lower()
         if word not in self.words:
-            print('not in word list')
+            print(f'{word} not in word list')
             return
         self.colorize(word)
         if word == self.answer:
@@ -78,15 +85,18 @@ class Wordle():
         self.letter = 0
             
     def deletePressed(self):
-        pass
-    
+        guess = self.guess
+        letter = self.letter
+        if letter == 0:
+            return
+        letter -= 1
+        canvas.itemconfigure(f'L{guess}{letter}', text="")
+        self.letter = letter
+            
     def alphaPressed(self, c):
         if self.letter == 5:
             return
-        x = leftMargin + self.letter*(SQUARE+SPACE)+SQUARE//2
-        y = TOP_MARGIN + self.guess*(SQUARE+SPACE) +SQUARE//2
-        canvas.create_text(x, y, text = c, font = ('Helvetica', '24', 'bold' ), justify=tk.CENTER, 
-                           fill = FOREGROUND, tag = f'L{self.guess}{self.letter}')
+        canvas.itemconfigure(f'L{self.guess}{self.letter}', text = c)
         self.letter += 1
         
     def keyPressed(self, event):
