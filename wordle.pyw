@@ -59,7 +59,7 @@ class Wordle():
         self.answers = pickle.load(open('answers.list', 'rb'))
         canvas.focus_set()
         canvas.bind('<KeyPress>', self.keyPressed)
-        self.unknown = canvas.create_text(400, TOP_MARGIN//2, justify=tk.CENTER, state=tk.HIDDEN,
+        self.notice = canvas.create_text(400, TOP_MARGIN//2, justify=tk.CENTER, state=tk.HIDDEN,
                            text='', fill=FOREGROUND, font = ('Helvetica', 16))
         self.play()
         root.mainloop()        
@@ -75,17 +75,20 @@ class Wordle():
         word = word.lower()
         if word not in self.words:
             msg = f'{word} not in word list'
-            canvas.itemconfigure(self.unknown, text=msg, state=tk.NORMAL)      
+            canvas.itemconfigure(self.notice, text=msg, state=tk.NORMAL)      
             return
         self.colorize(word)
         if word == self.answer:
             self.celebrate()
         self.guess += 1
         self.letter = 0
+        if self.guess == 6:
+            self.state = 'lost'
+            print('You lose')
             
     def deletePressed(self):
-        if canvas.itemcget(self.unknown, 'state') == tk.NORMAL:
-            canvas.itemconfigure(self.unknown, state=tk.HIDDEN)
+        if canvas.itemcget(self.notice, 'state') == tk.NORMAL:
+            canvas.itemconfigure(self.notice, state=tk.HIDDEN)
         guess = self.guess
         letter = self.letter
         if letter == 0:
@@ -101,6 +104,8 @@ class Wordle():
         self.letter += 1
         
     def keyPressed(self, event):
+        if self.state != 'active':
+            return
         key = event.keysym
         if not key.isalpha():
             return
@@ -117,11 +122,12 @@ class Wordle():
         print(f'answer is {self.answer}')
         self.guess = 0
         self.letter = 0
-        canvas.itemconfigure(self.unknown, text='', state=tk.HIDDEN)    
+        canvas.itemconfigure(self.notice, text='', state=tk.HIDDEN)    
         for row in range(6):
             for col in range(5):
                 canvas.itemconfigure(letters[row, col] , text='', fill=FOREGROUND)
                 canvas.itemconfigure(squares[row, col])
+        self.state = 'active'
                     
     def colorize(self, word):
         used = defaultdict(int)
@@ -144,6 +150,7 @@ class Wordle():
             available[c] -= 1
                                 
     def celebrate(self):
+        self.state = 'win'
         print('You win!')
 
 wordle = Wordle()
