@@ -61,6 +61,15 @@ class Wordle():
         canvas.bind('<KeyPress>', self.keyPressed)
         self.notice = canvas.create_text(400, TOP_MARGIN//2, justify=tk.CENTER, state=tk.HIDDEN,
                            text='', fill=FOREGROUND, font = ('Helvetica', 16))
+        canvas.create_rounded_rectangle(5, 5, 125, 65, outline = FOREGROUND, fill = 'green', tags = ('button', 'play'))
+        canvas.create_rounded_rectangle(675, 5, 795, 65, fill='red', outline = FOREGROUND, tags = ('button', 'quit'))
+        canvas.create_text(60, 35, text= 'PLAY', font=('Helvetica', '24', 'bold'), tags=('button', 'play'), 
+                           fill=FOREGROUND, justify=tk.CENTER)
+        canvas.create_text(735, 35, text= 'QUIT', font=('Helvetica', '24', 'bold'), tags=('button', 'quit'), 
+                           fill=FOREGROUND, justify = tk.CENTER)
+        canvas.itemconfigure('button', state=tk.NORMAL)
+        canvas.tag_bind('quit', '<ButtonRelease-1>', self.quit)
+        canvas.tag_bind('play', '<ButtonRelease-1>', self.newGame)
         self.play()
         root.mainloop()        
         
@@ -83,8 +92,7 @@ class Wordle():
         self.guess += 1
         self.letter = 0
         if self.guess == 6:
-            self.state = 'lost'
-            print('You lose')
+            self.lose()
             
     def deletePressed(self):
         if canvas.itemcget(self.notice, 'state') == tk.NORMAL:
@@ -122,11 +130,12 @@ class Wordle():
         print(f'answer is {self.answer}')
         self.guess = 0
         self.letter = 0
-        canvas.itemconfigure(self.notice, text='', state=tk.HIDDEN)    
+        canvas.itemconfigure(self.notice, text='', state=tk.HIDDEN) 
+        canvas.itemconfigure('button', state=tk.HIDDEN)
         for row in range(6):
             for col in range(5):
                 canvas.itemconfigure(letters[row, col] , text='', fill=FOREGROUND)
-                canvas.itemconfigure(squares[row, col])
+                canvas.itemconfigure(squares[row, col], fill='')
         self.state = 'active'
                     
     def colorize(self, word):
@@ -151,7 +160,20 @@ class Wordle():
                                 
     def celebrate(self):
         self.state = 'win'
-        print('You win!')
-
+        canvas.itemconfigure('button', state = tk.NORMAL)
+        canvas.itemconfigure(self.notice, text = 'Congratulations!', state=tk.NORMAL)        
+        
+    def lose(self):
+        self.state = 'lost'
+        canvas.itemconfigure('button', state = tk.NORMAL)
+        canvas.itemconfigure(self.notice, text = 'No more guesses.  You lose.', state=tk.NORMAL)     
+        
+    def quit(self, event):
+        root.destroy()
+        root.quit()
+        
+    def newGame(self, event):
+        self.play()
+        
 wordle = Wordle()
 
