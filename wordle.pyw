@@ -49,20 +49,18 @@ for row in range(6):
     for col in range(5):
         squares[row,col] = canvas.create_rounded_rectangle(x, y, x+SQUARE, y+SQUARE,  outline = OUTLINE)
         letters[row, col] = canvas.create_text(x+SQUARE//2, y+SQUARE//2, font = ('Helvetica', '24', 'bold' ), 
-                                               justify=tk.CENTER,  fill = FOREGROUND, tag = f'L{row}{col}')
+                                               justify=tk.CENTER,  text='', tag = f'L{row}{col}')
         x += SQUARE+SPACE
     y += SQUARE+SPACE
     
-letters = {}
-
-
-
 class Wordle():
     def __init__(self):
         self.words = pickle.load(open('guesses.set', 'rb'))
         self.answers = pickle.load(open('answers.list', 'rb'))
         canvas.focus_set()
         canvas.bind('<KeyPress>', self.keyPressed)
+        self.unknown = canvas.create_text(400, TOP_MARGIN//2, justify=tk.CENTER, state=tk.HIDDEN,
+                           text='', fill=FOREGROUND, font = ('Helvetica', 16))
         self.play()
         root.mainloop()        
         
@@ -76,7 +74,8 @@ class Wordle():
             word += canvas.itemcget(tag, 'text')
         word = word.lower()
         if word not in self.words:
-            print(f'{word} not in word list')
+            msg = f'{word} not in word list'
+            canvas.itemconfigure(self.unknown, text=msg, state=tk.NORMAL)      
             return
         self.colorize(word)
         if word == self.answer:
@@ -85,6 +84,8 @@ class Wordle():
         self.letter = 0
             
     def deletePressed(self):
+        if canvas.itemcget(self.unknown, 'state') == tk.NORMAL:
+            canvas.itemconfigure(self.unknown, state=tk.HIDDEN)
         guess = self.guess
         letter = self.letter
         if letter == 0:
@@ -116,8 +117,12 @@ class Wordle():
         print(f'answer is {self.answer}')
         self.guess = 0
         self.letter = 0
-        self.state = 'normal'
-        
+        canvas.itemconfigure(self.unknown, text='', state=tk.HIDDEN)    
+        for row in range(6):
+            for col in range(5):
+                canvas.itemconfigure(letters[row, col] , text='', fill=FOREGROUND)
+                canvas.itemconfigure(squares[row, col])
+                    
     def colorize(self, word):
         used = defaultdict(int)
         answer = self.answer
