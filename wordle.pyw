@@ -2,6 +2,7 @@ import tkinter as tk
 import random
 import pickle
 from collections import defaultdict
+import time
 
 class MyCanvas(tk.Canvas):
     def __init__(self, parent, **kwargs):
@@ -147,12 +148,12 @@ class Wordle():
     def colorize(self, word):
         qwerty = self.qwerty
         used = defaultdict(int)
+        colors = 5*[None]
         answer = self.answer
         g = self.guess
         correct = [i for i in range(5) if word[i]==answer[i] ]
         for c in correct:
-            canvas.itemconfigure(squares[g, c], fill= GOOD)
-            canvas.itemconfigure(qwerty[word[c]], fill=GOOD)
+            colors[c] = GOOD 
             used[word[c]] += 1
         others = [i for i in range(5) if i not in correct and word[i] in answer]
         available = {}
@@ -163,16 +164,29 @@ class Wordle():
             c = word[i]
             if available[c] == 0:
                 continue
-            canvas.itemconfigure(squares[g, i], fill=CLOSE)
-            q = qwerty[c]
-            if canvas.itemcget(q, "fill") != GOOD:
-                canvas.itemconfigure(q, fill=CLOSE)
+            colors[i] = CLOSE
             available[c] -= 1
             
         for i in range(5):
             if i not in correct + others:
-                canvas.itemconfigure(qwerty[word[i]], fill = BACK)
-                                
+                colors[i] = BACK
+                
+        #Aninmated coloring
+        interval = .5
+        for i in range(5):
+            canvas.itemconfigure(letters[g,i], text = '')
+            canvas.update_idletasks()
+        time.sleep(interval)
+        for idx, letter in enumerate(word):
+            color = colors[idx]
+            canvas.itemconfigure(letters[g, idx], text=letter.upper())
+            canvas.itemconfigure(squares[g, idx], fill=color)
+            current = canvas.itemcget(qwerty[letter], 'fill') 
+            if color != CLOSE or current != GOOD:
+                canvas.itemconfigure(qwerty[letter], fill = color)
+            canvas.update_idletasks()
+            time.sleep(interval)
+                                                
     def celebrate(self):
         self.state = 'win'
         canvas.itemconfigure('button', state = tk.NORMAL)
