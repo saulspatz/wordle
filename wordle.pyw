@@ -3,6 +3,7 @@ import random
 import pickle
 from collections import defaultdict
 import time
+import sys
 
 class MyCanvas(tk.Canvas):
     def __init__(self, parent, **kwargs):
@@ -59,7 +60,8 @@ for row in range(6):
     y += SQUARE+SPACE
     
 class Wordle():
-    def __init__(self):
+    def __init__(self, debug):
+        self.debug = debug
         self.words = pickle.load(open('guesses.set', 'rb'))
         self.answers = pickle.load(open('answers.list', 'rb'))
         canvas.focus_set()
@@ -135,7 +137,8 @@ class Wordle():
         self.answer = random.choice(self.answers)
         for q in self.qwerty.values():
             canvas.itemconfigure(q, fill=UNKNOWN)            
-        print(f'answer is {self.answer}')
+        if self.debug:
+            print(f'answer is {self.answer}')
         self.guess = 0
         self.letter = 0
         canvas.itemconfigure(self.notice, text='', state=tk.HIDDEN) 
@@ -245,6 +248,11 @@ class Wordle():
         for widget in (key, text):
             canvas.tag_bind(widget, '<ButtonRelease-1>', handler)         
 
+args = sys.argv
 
-Wordle()
+try:
+    if args[1] in ('-d' '--debug'):
+        Wordle(True)
+except IndexError:
+    Wordle(False)
 
