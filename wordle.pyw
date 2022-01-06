@@ -95,7 +95,7 @@ class Wordle():
             self.celebrate()
         self.guess += 1
         self.letter = 0
-        if self.guess == 6:
+        if self.guess == 7:
             self.lose()
             
     def deletePressed(self):
@@ -131,6 +131,8 @@ class Wordle():
     
     def play(self):
         self.answer = random.choice(self.answers)
+        for q in self.qwerty.values():
+            canvas.itemconfigure(q, fill=UNKNOWN)            
         print(f'answer is {self.answer}')
         self.guess = 0
         self.letter = 0
@@ -143,12 +145,14 @@ class Wordle():
         self.state = 'active'
                     
     def colorize(self, word):
+        qwerty = self.qwerty
         used = defaultdict(int)
         answer = self.answer
         g = self.guess
         correct = [i for i in range(5) if word[i]==answer[i] ]
         for c in correct:
             canvas.itemconfigure(squares[g, c], fill= GOOD)
+            canvas.itemconfigure(qwerty[word[c]], fill=GOOD)
             used[word[c]] += 1
         others = [i for i in range(5) if i not in correct and word[i] in answer]
         available = {}
@@ -160,7 +164,14 @@ class Wordle():
             if available[c] == 0:
                 continue
             canvas.itemconfigure(squares[g, i], fill=CLOSE)
+            q = qwerty[c]
+            if canvas.itemcget(q, "fill") != GOOD:
+                canvas.itemconfigure(q, fill=CLOSE)
             available[c] -= 1
+            
+        for i in range(5):
+            if i not in correct + others:
+                canvas.itemconfigure(qwerty[word[i]], fill = BACK)
                                 
     def celebrate(self):
         self.state = 'win'
@@ -184,9 +195,10 @@ class Wordle():
         y = HEIGHT - BOTTOM_MARGIN - (row +1) * KEY_HEIGHT - row * SPACE
         start = WIDTH//2 - (KEY_WIDTH + SPACE) * length//2
         x = start + col*(KEY_WIDTH+SPACE)
-        key = canvas.create_rounded_rectangle(x, y, x+KEY_WIDTH, y+KEY_HEIGHT, fill=UNKNOWN, tags = 'key')
+        key = canvas.create_rounded_rectangle(x, y, x+KEY_WIDTH, y+KEY_HEIGHT, fill=UNKNOWN, outline=OUTLINE, tags = 'key')
         letter = canvas.create_text(x+KEY_WIDTH//2, y+KEY_HEIGHT//2, text=char, font=('Helvetica', 24, 'bold'), fill = FORE)
-        self.qwerty[char] = key
+        for c in (char.lower(), char.upper()):
+            self.qwerty[c] = key
         handler = lambda entry: canvas.event_generate('<KeyPress>', keysym=char)
         for widget in (key, letter):
             canvas.tag_bind(widget, '<ButtonRelease-1>', handler)
@@ -206,7 +218,7 @@ class Wordle():
         y = HEIGHT - BOTTOM_MARGIN - KEY_HEIGHT 
         x = WIDTH//2 - (KEY_WIDTH + SPACE) * 7 // 2
         x -= SPACE + 2*KEY_WIDTH
-        key = canvas.create_rounded_rectangle(x, y, x+ 2* KEY_WIDTH, y+KEY_HEIGHT, fill=UNKNOWN)
+        key = canvas.create_rounded_rectangle(x, y, x+ 2* KEY_WIDTH, y+KEY_HEIGHT, fill=UNKNOWN, outline=OUTLINE)
         text = canvas.create_text(x+ KEY_WIDTH, y+ KEY_HEIGHT//2, text='Enter', fill=FORE, font=('Helvetica', 20, 'bold'))
         handler = lambda entry: canvas.event_generate('<KeyPress>', keysym='Return')
         for widget in (key, text):
