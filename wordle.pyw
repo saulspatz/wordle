@@ -61,15 +61,14 @@ class Wordle():
         canvas.bind('<KeyPress>', self.keyPressed)
         self.notice = canvas.create_text(400, TOP_MARGIN//2, justify=tk.CENTER, state=tk.HIDDEN,
                            text='', fill=FOREGROUND, font = ('Helvetica', 16))
-        canvas.create_rounded_rectangle(5, 5, 125, 65, outline = FOREGROUND, fill = 'green', tags = ('button', 'play'))
-        canvas.create_rounded_rectangle(675, 5, 795, 65, fill='red', outline = FOREGROUND, tags = ('button', 'quit'))
-        canvas.create_text(60, 35, text= 'PLAY', font=('Helvetica', '24', 'bold'), tags=('button', 'play'), 
-                           fill=FOREGROUND, justify=tk.CENTER)
-        canvas.create_text(735, 35, text= 'QUIT', font=('Helvetica', '24', 'bold'), tags=('button', 'quit'), 
-                           fill=FOREGROUND, justify = tk.CENTER)
-        canvas.itemconfigure('button', state=tk.NORMAL)
-        canvas.tag_bind('quit', '<ButtonRelease-1>', self.quit)
-        canvas.tag_bind('play', '<ButtonRelease-1>', self.newGame)
+        quitButton = tk.Button(bg='red', fg=FOREGROUND, activebackground='red', activeforeground = FOREGROUND,
+                               text='QUIT', font=('Helvetica', '24', 'bold'),
+                               command = root.destroy, height = 3, width = 9, relief= tk.FLAT)
+        playButton = tk.Button(bg='green', fg=FOREGROUND,  activebackground='green', activeforeground = FOREGROUND,
+                               text='PLAY', font=('Helvetica', '24', 'bold'),
+                               command = self.play, height = 3, width = 9, relief = tk.FLAT)        
+        canvas.create_window(10, 10, window=playButton, state=tk.NORMAL, tags = 'button', anchor = tk.NW)
+        canvas.create_window(790, 10, window = quitButton, state = tk.NORMAL, tags='button', anchor = tk.NE)
         self.play()
         root.mainloop()        
         
@@ -170,7 +169,7 @@ class Wordle():
         
     def quit(self, event):
         root.destroy()
-        root.quit()
+
         
     def newGame(self, event):
         self.play()
