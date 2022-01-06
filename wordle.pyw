@@ -94,9 +94,10 @@ class Wordle():
         self.colorize(word)
         if word == self.answer:
             self.celebrate()
+            return
         self.guess += 1
         self.letter = 0
-        if self.guess == 7:
+        if self.guess == 6:
             self.lose()
             
     def deletePressed(self):
@@ -195,7 +196,7 @@ class Wordle():
     def lose(self):
         self.state = 'lost'
         canvas.itemconfigure('button', state = tk.NORMAL)
-        canvas.itemconfigure(self.notice, text = 'No more guesses.  You lose.', state=tk.NORMAL)     
+        canvas.itemconfigure(self.notice, text = f'No more guesses.  Word is {self.answer}.', state=tk.NORMAL)     
         
     def quit(self, event):
         root.destroy()
@@ -244,5 +245,6 @@ class Wordle():
         for widget in (key, text):
             canvas.tag_bind(widget, '<ButtonRelease-1>', handler)         
 
-wordle = Wordle()
+
+Wordle()
 
