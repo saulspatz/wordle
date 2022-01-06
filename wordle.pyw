@@ -64,6 +64,8 @@ class Wordle():
         self.debug = debug
         self.words = pickle.load(open('guesses.set', 'rb'))
         self.answers = pickle.load(open('answers.list', 'rb'))
+        self.wordLength = 5
+        self.maxGuesses = 6
         canvas.focus_set()
         canvas.bind('<KeyPress>', self.keyPressed)
         self.notice = canvas.create_text(WIDTH//2, TOP_MARGIN//2, justify=tk.CENTER, state=tk.HIDDEN,
@@ -81,11 +83,11 @@ class Wordle():
         root.mainloop()        
         
     def enterPressed(self):
-        if self.letter != 5:
+        if self.letter != self.wordLength:
             return
         word = ''
         g = self.guess
-        for letter in range(5):
+        for letter in range(self.wordLength):
             tag = f'L{g}{letter}'
             word += canvas.itemcget(tag, 'text')
         word = word.lower()
@@ -114,15 +116,21 @@ class Wordle():
         self.letter = letter
             
     def alphaPressed(self, c):
-        if self.letter == 5:
+        if self.letter == self.wordLength:
             return
         canvas.itemconfigure(f'L{self.guess}{self.letter}', text = c)
         self.letter += 1
         
     def keyPressed(self, event):
-        if self.state != 'active':
-            return
         key = event.keysym
+        if self.state != 'active':
+            if key not in 'PQpq':
+                return
+            if key.upper() == 'P':
+                self.play()
+                return
+            if key.upper() == 'Q':
+                root.destroy()
         if not key.isalpha():
             return
         if key == 'Return':
@@ -143,8 +151,8 @@ class Wordle():
         self.letter = 0
         canvas.itemconfigure(self.notice, text='', state=tk.HIDDEN) 
         canvas.itemconfigure('button', state=tk.HIDDEN)
-        for row in range(6):
-            for col in range(5):
+        for row in range(self.maxGuesses):
+            for col in range(self.wordLength):
                 canvas.itemconfigure(letters[row, col] , text='', fill=FORE)
                 canvas.itemconfigure(squares[row, col], fill='')
         self.state = 'active'
@@ -152,14 +160,14 @@ class Wordle():
     def colorize(self, word):
         qwerty = self.qwerty
         used = defaultdict(int)
-        colors = 5*[None]
+        colors = self.wordLength*[None]
         answer = self.answer
         g = self.guess
-        correct = [i for i in range(5) if word[i]==answer[i] ]
+        correct = [i for i in range(self.wordLength) if word[i]==answer[i] ]
         for c in correct:
             colors[c] = GOOD 
             used[word[c]] += 1
-        others = [i for i in range(5) if i not in correct and word[i] in answer]
+        others = [i for i in range(self.wordLength) if i not in correct and word[i] in answer]
         available = {}
         for i in others:
             c = word[i]
@@ -171,13 +179,13 @@ class Wordle():
             colors[i] = CLOSE
             available[c] -= 1
             
-        for i in range(5):
+        for i in range(self.wordLength):
             if i not in correct + others:
                 colors[i] = BACK
                 
         #Aninmated coloring
         interval = .5
-        for i in range(5):
+        for i in range(self.wordLength):
             canvas.itemconfigure(letters[g,i], text = '')
             canvas.update_idletasks()
         time.sleep(interval)
