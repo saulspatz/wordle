@@ -3,6 +3,7 @@ import random
 import pickle
 from collections import defaultdict
 import sys
+import time
 
 class MyCanvas(tk.Canvas):
     def __init__(self, parent, **kwargs):
@@ -141,6 +142,7 @@ class Wordle():
         self.alphaPressed(key.upper())
     
     def play(self):
+        self.start = time.time()
         self.answer = random.choice(self.answers)
         for q in self.qwerty.values():
             canvas.itemconfigure(q, fill=UNKNOWN)            
@@ -203,14 +205,22 @@ class Wordle():
             
                                                 
     def celebrate(self):
+        elapsed = int(time.time() -self.start)
+        minutes = elapsed//60
+        seconds = elapsed%60
         self.state = 'win'
         canvas.itemconfigure('button', state = tk.NORMAL)
-        canvas.itemconfigure(self.notice, text = 'Congratulations!', state=tk.NORMAL)        
+        canvas.itemconfigure(self.notice, state=tk.NORMAL,
+                             text = f'{self.guess+1} guesses\n{minutes} minutes {seconds} seconds')
         
     def lose(self):
+        elapsed = int(time.time() -self.start)
+        minutes = elapsed//60
+        seconds = elapsed%60
         self.state = 'lost'
         canvas.itemconfigure('button', state = tk.NORMAL)
-        canvas.itemconfigure(self.notice, text = f'No more guesses.  Word is {self.answer}.', state=tk.NORMAL)     
+        canvas.itemconfigure(self.notice,  state=tk.NORMAL,
+                             text = f'Out of guesses.  Word is "{self.answer}"\n{minutes} minutes {seconds} seconds')     
         
     def quit(self, event):
         root.destroy()
