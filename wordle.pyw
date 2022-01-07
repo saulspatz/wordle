@@ -45,16 +45,24 @@ UNKNOWN = 'LightGray'
 class Wordle():
     def __init__(self, debug):
         self.debug = debug
-        self.words = pickle.load(open('guesses.set', 'rb'))
-        self.answers = pickle.load(open('answers.list', 'rb'))
+        self.words = pickle.load(open('guesses5.set', 'rb'))
+        self.answers = pickle.load(open('answers5.list', 'rb'))
         self.wordLength = 5
         self.maxGuesses = 6
         root = self.root = tk.Tk()
         root.title("WORDLE")
-        self.canvas = MyCanvas(root, width=WIDTH, height=HEIGHT, background = BACK)
-        self.canvas.grid(row = 0, column = 0)        
-        self.drawCanvas()
-        self.makeQwerty()
+        frame = self.frame = tk.Frame(root)
+        self.frame.pack(expand=True, fill="both")
+        self.playFrame=tk.Frame(frame)
+        self.canvas = MyCanvas(self.playFrame, width=WIDTH, height=HEIGHT, background = BACK)
+        self.canvas.pack()
+        self.controlFrame = tk.Frame(frame)
+        self.controls = tk.Canvas(self.controlFrame, width=WIDTH, height=HEIGHT, background = BACK)
+        self.controls.pack()
+        self.drawCanvas()       
+        self.drawControls()        
+        self.playFrame.grid(row = 0, column = 0)
+        self.controlFrame.grid(row = 0, column = 0)
         self.play()
         root.mainloop()        
         
@@ -76,15 +84,32 @@ class Wordle():
             canvas.bind('<KeyPress>', self.keyPressed)
             self.notice = canvas.create_text(WIDTH//2, TOP_MARGIN//2, justify=tk.CENTER, state=tk.HIDDEN,
                                text='', fill=FORE, font = ('Helvetica', 16))
-            quitButton = tk.Button(bg='red', fg=FORE, activebackground='red', activeforeground = FORE,
-                                   text='QUIT', font=('Helvetica', '24', 'bold'),
-                                   command = self.root.destroy, height = 3, width = 9, relief= tk.FLAT)
-            playButton = tk.Button(bg='green', fg=FORE,  activebackground='green', activeforeground = FORE,
-                                   text='PLAY', font=('Helvetica', '24', 'bold'),
-                                   command = self.play, height = 3, width = 9, relief = tk.FLAT)        
+            quitButton = tk.Button(canvas, bg='red', fg=FORE, activebackground='red', activeforeground = FORE,
+                                   text='Quit', font=('Helvetica', '24', 'bold'),
+                                   command = self.root.destroy, height = 1, width = 6, relief= tk.FLAT)
+            playButton = tk.Button(canvas, bg='green', fg=FORE,  activebackground='green', activeforeground = FORE,
+                                   text='Play', font=('Helvetica', '24', 'bold'),
+                                   command = self.play, height = 1, width = 6
+                                   , relief = tk.FLAT)
+            
             canvas.create_window(10, 10, window=playButton, state=tk.NORMAL, tags = 'button', anchor = tk.NW)
             canvas.create_window(WIDTH-10, 10, window = quitButton, state = tk.NORMAL, tags='button', anchor = tk.NE)
+            
+            self.gear = tk.PhotoImage(file='gear.png')
+            canvas.create_image(WIDTH-64, TOP_MARGIN, anchor=tk.NW, image=self.gear, tag ='gear')
+            canvas.tag_bind('gear', '<ButtonRelease-1>', lambda e: self.controlFrame.tkraise())
             self.makeQwerty()        
+        
+    def drawControls(self):        
+        controls = self.controls
+        x = WIDTH - 64
+        y = TOP_MARGIN
+        side = 24
+        controls.create_rectangle(x, y, x+ side, y+side, outline= OUTLINE, fill=BACK, tag='done')
+        controls.create_line(x, y, x+side, y+side, width=1, fill=FORE, tag='done' )
+        controls.create_line(x+side, y, x, y+side, width=1, fill=FORE, tag='done' )
+        controls.tag_bind('done', '<ButtonRelease-1>', lambda e: self.playFrame.tkraise())
+        controls.create_text(WIDTH//2, TOP_MARGIN, anchor=tk.N, text="Settings", fill = FORE, font = ('Helvetica', 24))
         
     def enterPressed(self):
         canvas = self.canvas
@@ -149,6 +174,7 @@ class Wordle():
         self.alphaPressed(key.upper())
     
     def play(self):
+        self.playFrame.tkraise()
         canvas = self.canvas
         letters = self.letters
         squares = self.squares
@@ -217,8 +243,7 @@ class Wordle():
         for idx, letter in enumerate(word):
             color = colors[idx]
             canvas.after(interval, self.revealLetter(idx, letter, color))
-            
-                                                
+                                
     def celebrate(self):
         canvas = self.canvas
         elapsed = int(time.time() -self.start)
