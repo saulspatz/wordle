@@ -2,7 +2,6 @@ import tkinter as tk
 import random
 import pickle
 from collections import defaultdict
-import time
 import sys
 
 class MyCanvas(tk.Canvas):
@@ -156,14 +155,23 @@ class Wordle():
                 canvas.itemconfigure(letters[row, col] , text='', fill=FORE)
                 canvas.itemconfigure(squares[row, col], fill='')
         self.state = 'active'
-                    
-    def colorize(self, word):
+        
+    def revealLetter(self, idx, letter, color):
         qwerty = self.qwerty
+        g = self.guess
+        canvas.itemconfigure(letters[g, idx], text=letter.upper())
+        canvas.itemconfigure(squares[g, idx], fill=color)
+        current = canvas.itemcget(qwerty[letter], 'fill') 
+        if color != CLOSE or current != GOOD:
+            canvas.itemconfigure(qwerty[letter], fill = color)
+        canvas.update()
+        
+    def colorize(self, word):
         used = defaultdict(int)
         colors = self.wordLength*[None]
         answer = self.answer
-        g = self.guess
         correct = [i for i in range(self.wordLength) if word[i]==answer[i] ]
+        g = self.guess
         for c in correct:
             colors[c] = GOOD 
             used[word[c]] += 1
@@ -184,20 +192,15 @@ class Wordle():
                 colors[i] = BACK
                 
         #Aninmated coloring
-        interval = .5
+        interval = 500
         for i in range(self.wordLength):
             canvas.itemconfigure(letters[g,i], text = '')
-            canvas.update_idletasks()
-        time.sleep(interval)
+            canvas.update()
+
         for idx, letter in enumerate(word):
             color = colors[idx]
-            canvas.itemconfigure(letters[g, idx], text=letter.upper())
-            canvas.itemconfigure(squares[g, idx], fill=color)
-            current = canvas.itemcget(qwerty[letter], 'fill') 
-            if color != CLOSE or current != GOOD:
-                canvas.itemconfigure(qwerty[letter], fill = color)
-            canvas.update_idletasks()
-            time.sleep(interval)
+            canvas.after(interval, self.revealLetter(idx, letter, color))
+            
                                                 
     def celebrate(self):
         self.state = 'win'
