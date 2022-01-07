@@ -41,24 +41,7 @@ BOTTOM_MARGIN = 50
 GOOD = 'green'
 CLOSE = 'tan'
 UNKNOWN = 'LightGray'
-root = tk.Tk()
-root.title("WORDLE")
-canvas = MyCanvas(root, width=WIDTH, height=HEIGHT, background = BACK)
-canvas.pack()
 
-squares = {}
-letters = {}
-y = TOP_MARGIN
-leftMargin = WIDTH//2 - 2*(SQUARE+SPACE) - SQUARE//2
-for row in range(6):
-    x = leftMargin
-    for col in range(5):
-        squares[row,col] = canvas.create_rounded_rectangle(x, y, x+SQUARE, y+SQUARE,  outline = OUTLINE)
-        letters[row, col] = canvas.create_text(x+SQUARE//2, y+SQUARE//2, font = ('Helvetica', '24', 'bold' ), 
-                                               justify=tk.CENTER,  text='', tag = f'L{row}{col}')
-        x += SQUARE+SPACE
-    y += SQUARE+SPACE
-    
 class Wordle():
     def __init__(self, debug):
         self.debug = debug
@@ -66,23 +49,45 @@ class Wordle():
         self.answers = pickle.load(open('answers.list', 'rb'))
         self.wordLength = 5
         self.maxGuesses = 6
-        canvas.focus_set()
-        canvas.bind('<KeyPress>', self.keyPressed)
-        self.notice = canvas.create_text(WIDTH//2, TOP_MARGIN//2, justify=tk.CENTER, state=tk.HIDDEN,
-                           text='', fill=FORE, font = ('Helvetica', 16))
-        quitButton = tk.Button(bg='red', fg=FORE, activebackground='red', activeforeground = FORE,
-                               text='QUIT', font=('Helvetica', '24', 'bold'),
-                               command = root.destroy, height = 3, width = 9, relief= tk.FLAT)
-        playButton = tk.Button(bg='green', fg=FORE,  activebackground='green', activeforeground = FORE,
-                               text='PLAY', font=('Helvetica', '24', 'bold'),
-                               command = self.play, height = 3, width = 9, relief = tk.FLAT)        
-        canvas.create_window(10, 10, window=playButton, state=tk.NORMAL, tags = 'button', anchor = tk.NW)
-        canvas.create_window(WIDTH-10, 10, window = quitButton, state = tk.NORMAL, tags='button', anchor = tk.NE)
+        root = self.root = tk.Tk()
+        root.title("WORDLE")
+        self.canvas = MyCanvas(root, width=WIDTH, height=HEIGHT, background = BACK)
+        self.canvas.grid(row = 0, column = 0)        
+        self.drawCanvas()
         self.makeQwerty()
         self.play()
         root.mainloop()        
         
+    def drawCanvas(self):
+        canvas = self.canvas
+        self.squares = squares =  {}
+        self.letters = letters = {}
+        y = TOP_MARGIN
+        leftMargin = WIDTH//2 - 2*(SQUARE+SPACE) - SQUARE//2
+        for row in range(6):
+            x = leftMargin
+            for col in range(5):
+                squares[row,col] = canvas.create_rounded_rectangle(x, y, x+SQUARE, y+SQUARE,  outline = OUTLINE)
+                letters[row, col] = canvas.create_text(x+SQUARE//2, y+SQUARE//2, font = ('Helvetica', '24', 'bold' ), 
+                                                       justify=tk.CENTER,  text='', tag = f'L{row}{col}')
+                x += SQUARE+SPACE
+            y += SQUARE+SPACE 
+            canvas.focus_set()
+            canvas.bind('<KeyPress>', self.keyPressed)
+            self.notice = canvas.create_text(WIDTH//2, TOP_MARGIN//2, justify=tk.CENTER, state=tk.HIDDEN,
+                               text='', fill=FORE, font = ('Helvetica', 16))
+            quitButton = tk.Button(bg='red', fg=FORE, activebackground='red', activeforeground = FORE,
+                                   text='QUIT', font=('Helvetica', '24', 'bold'),
+                                   command = self.root.destroy, height = 3, width = 9, relief= tk.FLAT)
+            playButton = tk.Button(bg='green', fg=FORE,  activebackground='green', activeforeground = FORE,
+                                   text='PLAY', font=('Helvetica', '24', 'bold'),
+                                   command = self.play, height = 3, width = 9, relief = tk.FLAT)        
+            canvas.create_window(10, 10, window=playButton, state=tk.NORMAL, tags = 'button', anchor = tk.NW)
+            canvas.create_window(WIDTH-10, 10, window = quitButton, state = tk.NORMAL, tags='button', anchor = tk.NE)
+            self.makeQwerty()        
+        
     def enterPressed(self):
+        canvas = self.canvas
         if self.letter != self.wordLength:
             return
         word = ''
@@ -105,6 +110,7 @@ class Wordle():
             self.lose()
             
     def deletePressed(self):
+        canvas = self.canvas
         if canvas.itemcget(self.notice, 'state') == tk.NORMAL:
             canvas.itemconfigure(self.notice, state=tk.HIDDEN)
         guess = self.guess
@@ -116,6 +122,7 @@ class Wordle():
         self.letter = letter
             
     def alphaPressed(self, c):
+        canvas = self.canvas
         if self.letter == self.wordLength:
             return
         canvas.itemconfigure(f'L{self.guess}{self.letter}', text = c)
@@ -130,7 +137,7 @@ class Wordle():
                 self.play()
                 return
             if key.upper() == 'Q':
-                root.destroy()
+                self.root.destroy()
         if not key.isalpha():
             return
         if key == 'Return':
@@ -142,6 +149,9 @@ class Wordle():
         self.alphaPressed(key.upper())
     
     def play(self):
+        canvas = self.canvas
+        letters = self.letters
+        squares = self.squares
         self.start = time.time()
         self.answer = random.choice(self.answers)
         for q in self.qwerty.values():
@@ -160,6 +170,9 @@ class Wordle():
         
     def revealLetter(self, idx, letter, color):
         qwerty = self.qwerty
+        canvas = self.canvas
+        letters = self.letters
+        squares = self.squares
         g = self.guess
         canvas.itemconfigure(letters[g, idx], text=letter.upper())
         canvas.itemconfigure(squares[g, idx], fill=color)
@@ -169,6 +182,8 @@ class Wordle():
         canvas.update()
         
     def colorize(self, word):
+        canvas = self.canvas
+        letters = self.letters
         used = defaultdict(int)
         colors = self.wordLength*[None]
         answer = self.answer
@@ -205,6 +220,7 @@ class Wordle():
             
                                                 
     def celebrate(self):
+        canvas = self.canvas
         elapsed = int(time.time() -self.start)
         minutes = elapsed//60
         seconds = elapsed%60
@@ -214,6 +230,7 @@ class Wordle():
                              text = f'{self.guess+1} guesses\n{minutes} minutes {seconds} seconds')
         
     def lose(self):
+        canvas = self.canvas
         elapsed = int(time.time() -self.start)
         minutes = elapsed//60
         seconds = elapsed%60
@@ -223,12 +240,13 @@ class Wordle():
                              text = f'Out of guesses.  Word is "{self.answer}"\n{minutes} minutes {seconds} seconds')     
         
     def quit(self, event):
-        root.destroy()
+        self.root.destroy()
 
     def newGame(self, event):
         self.play()
         
     def makeKey(self, char, row, col):
+        canvas = self.canvas
         lengths = [7,9,10]
         length = lengths[row]
         y = HEIGHT - BOTTOM_MARGIN - (row +1) * KEY_HEIGHT - row * SPACE
@@ -243,6 +261,7 @@ class Wordle():
             canvas.tag_bind(widget, '<ButtonRelease-1>', handler)
     
     def makeQwerty(self):
+        canvas = self.canvas
         self.qwerty = {}
         key = self.makeKey
         top = 'QWERTYUIOP'
