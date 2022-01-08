@@ -26,6 +26,9 @@ class MyCanvas(tk.Canvas):
             x1, y1
           ]          
         return self.create_polygon(points, ** kwargs, smooth = True)
+    
+def rgb(r, g, b):
+    return f'#{r:02x}{g:02x}{b:02x}'
 
 ROWS = 6  # six rows of squares on display
 BACK = 'black'   #background
@@ -39,9 +42,9 @@ HEIGHT = 800 # canvas dimensions
 WIDTH = 800
 TOP_MARGIN = 100
 BOTTOM_MARGIN = 50
-GOOD = 'green3'
-CLOSE = 'yellow3'
-BAD = 'red3'
+GOOD = rgb(100, 200, 100)
+CLOSE = rgb(200, 200, 100)
+BAD = rgb(200, 100, 100)
 UNKNOWN = 'LightGray'
 
 class Wordle():
