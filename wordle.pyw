@@ -27,6 +27,7 @@ class MyCanvas(tk.Canvas):
           ]          
         return self.create_polygon(points, ** kwargs, smooth = True)
 
+ROWS = 6  # six rows of squares on display
 BACK = 'black'   #background
 FORE = 'white'   # foreground
 OUTLINE ='dim gray'
@@ -38,8 +39,9 @@ HEIGHT = 800 # canvas dimensions
 WIDTH = 800
 TOP_MARGIN = 100
 BOTTOM_MARGIN = 50
-GOOD = 'green'
-CLOSE = 'tan'
+GOOD = 'green3'
+CLOSE = 'yellow3'
+BAD = 'red3'
 UNKNOWN = 'LightGray'
 
 class Wordle():
@@ -48,7 +50,8 @@ class Wordle():
         self.words = pickle.load(open('guesses5.set', 'rb'))
         self.answers = pickle.load(open('answers5.list', 'rb'))
         self.wordLength = 5
-        self.maxGuesses = 6
+        self.maxGuesses = 8
+        self.interval = 400
         root = self.root = tk.Tk()
         root.title("WORDLE")
         frame = self.frame = tk.Frame(root)
@@ -70,14 +73,17 @@ class Wordle():
         canvas = self.canvas
         self.squares = squares =  {}
         self.letters = letters = {}
+        self.scrollTop = 0   # for scrolling guesses; index of top square displayed
         y = TOP_MARGIN
         leftMargin = WIDTH//2 - 2*(SQUARE+SPACE) - SQUARE//2
-        for row in range(6):
+        for row in range(self.maxGuesses):
             x = leftMargin
-            for col in range(5):
-                squares[row,col] = canvas.create_rounded_rectangle(x, y, x+SQUARE, y+SQUARE,  outline = OUTLINE)
+            state = tk.NORMAL if row < ROWS else tk.HIDDEN
+            for col in range(self.wordLength):
+                squares[row,col] = canvas.create_rounded_rectangle(x, y, x+SQUARE, y+SQUARE,  
+                                                                   outline = OUTLINE, state = state)
                 letters[row, col] = canvas.create_text(x+SQUARE//2, y+SQUARE//2, font = ('Helvetica', '24', 'bold' ), 
-                                                       justify=tk.CENTER,  text='', tag = f'L{row}{col}')
+                                                       justify=tk.CENTER,  text='', tag = f'L{row}{col}', state=state)
                 x += SQUARE+SPACE
             y += SQUARE+SPACE 
             canvas.focus_set()
@@ -89,8 +95,7 @@ class Wordle():
                                    command = self.root.destroy, height = 1, width = 6, relief= tk.FLAT)
             playButton = tk.Button(canvas, bg='green', fg=FORE,  activebackground='green', activeforeground = FORE,
                                    text='Play', font=('Helvetica', '24', 'bold'),
-                                   command = self.play, height = 1, width = 6
-                                   , relief = tk.FLAT)
+                                   command = self.play, height = 1, width = 6, relief = tk.FLAT)
             
             canvas.create_window(10, 10, window=playButton, state=tk.NORMAL, tags = 'button', anchor = tk.NW)
             canvas.create_window(WIDTH-10, 10, window = quitButton, state = tk.NORMAL, tags='button', anchor = tk.NE)
@@ -98,8 +103,14 @@ class Wordle():
             self.gear = tk.PhotoImage(file='gear.png')
             canvas.create_image(WIDTH-64, TOP_MARGIN, anchor=tk.NW, image=self.gear, tag ='gear')
             canvas.tag_bind('gear', '<ButtonRelease-1>', lambda e: self.controlFrame.tkraise())
-            self.makeQwerty()        
-        
+            
+        x = WIDTH//2    
+        y = TOP_MARGIN + ROWS*(SQUARE+SPACE)
+        print('notice' , y)
+        canvas.create_text(x, y, text = 'Use \u2191 \u2193 to scroll', tag = 'scroll',
+                                      font = ('Helvetica', 14), fill = FORE, anchor = tk.N, state = tk.HIDDEN)            
+        self.makeQwerty()             
+            
     def drawControls(self):        
         controls = self.controls
         x = WIDTH - 64
@@ -128,10 +139,12 @@ class Wordle():
         self.colorize(word)
         if word == self.answer:
             self.celebrate()
-            return
-        self.guess += 1
-        self.letter = 0
-        if self.guess == 6:
+        else:
+            self.guess += 1
+            self.letter = 0
+            if self.guess > ROWS:
+                canvas.itemconfigure('scroll', state = tk.NORMAL)
+        if self.guess == self.maxGuesses:
             self.lose()
             
     def deletePressed(self):
@@ -145,16 +158,53 @@ class Wordle():
         letter -= 1
         canvas.itemconfigure(f'L{guess}{letter}', text="")
         self.letter = letter
+        
+    def scroll(self, delta):
+        # Scroll boxes down by delta lines (negative delta means scroll up)
+        
+        #  ***** TODO: Check boundary conditions  **********
+        
+        top = self.scrollTop
+        squares = self.squares
+        letters = self.letters
+        canvas = self.canvas
+        length = self.wordLength
+        
+        ydelta = -delta * (SQUARE + SPACE)
+        for row in range(self.maxGuesses):
+            for col in range(length):
+                canvas.itemconfigure(squares[row, col], state = tk.HIDDEN)
+                canvas.itemconfigure(letters[row, col], state = tk.HIDDEN)
+        for row in range(top+delta, top+delta+ROWS):
+            for col in range(length):
+                canvas.itemconfigure(squares[row, col], state = tk.NORMAL)
+                canvas.itemconfigure(letters[row, col], state = tk.NORMAL)     
+        for row in range(self.maxGuesses):
+            for col in range(length):
+                for widget in (squares[row, col], letters[row, col]):
+                    canvas.move(widget, 0, ydelta)
+                    
+        self.scrollTop += delta
             
     def alphaPressed(self, c):
         canvas = self.canvas
         if self.letter == self.wordLength:
             return
+        if self.letter == 0 and self.guess >= ROWS:
+            self.scroll(1)
+            canvas.itemconfigure('scroll', state=tk.HIDDEN)
         canvas.itemconfigure(f'L{self.guess}{self.letter}', text = c)
         self.letter += 1
         
     def keyPressed(self, event):
         key = event.keysym
+        if self.canvas.itemcget('scroll', 'state') == tk.NORMAL:
+            if key in ('Up', 'KP_Up'):
+                self.scroll(-1)
+                return
+            elif key in ('Down', 'KP_Down'):
+                self.scroll(1)
+                return
         if self.state != 'active':
             if key not in 'PQpq':
                 return
@@ -165,7 +215,7 @@ class Wordle():
                 self.root.destroy()
         if not key.isalpha():
             return
-        if key == 'Return':
+        if key in ('Return', 'KP_Enter'):
             self.enterPressed()
         elif key in ('BackSpace', 'Delete'):
             self.deletePressed()
@@ -232,10 +282,10 @@ class Wordle():
             
         for i in range(self.wordLength):
             if i not in correct + others:
-                colors[i] = BACK
+                colors[i] = BAD
                 
         #Aninmated coloring
-        interval = 500
+        interval = self.interval
         for i in range(self.wordLength):
             canvas.itemconfigure(letters[g,i], text = '')
             canvas.update()
