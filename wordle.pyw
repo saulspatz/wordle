@@ -53,7 +53,7 @@ class Wordle():
         self.words = pickle.load(open('guesses5.set', 'rb'))
         self.answers = pickle.load(open('answers5.list', 'rb'))
         self.wordLength = 5
-        self.maxGuesses = 8
+        self.maxGuesses = 9
         self.interval = 400
         root = self.root = tk.Tk()
         root.title("WORDLE")
@@ -93,7 +93,8 @@ class Wordle():
             canvas.bind('<KeyPress>', self.keyPressed)
             self.notice = canvas.create_text(WIDTH//2, TOP_MARGIN//2, justify=tk.CENTER, state=tk.HIDDEN,
                                text='', fill=FORE, font = ('Helvetica', 16))
-            quitButton = tk.Button(canvas, bg='red', fg=FORE, activebackground='red', activeforeground = FORE,
+            self.quitButton = tk.Button(canvas, bg='red', fg=FORE, activebackground='red', 
+                                  activeforeground = FORE,
                                    text='Quit', font=('Helvetica', '24', 'bold'),
                                    command = self.root.destroy, height = 1, width = 6, relief= tk.FLAT)
             playButton = tk.Button(canvas, bg='green', fg=FORE,  activebackground='green', activeforeground = FORE,
@@ -101,7 +102,8 @@ class Wordle():
                                    command = self.play, height = 1, width = 6, relief = tk.FLAT)
             
             canvas.create_window(10, 10, window=playButton, state=tk.NORMAL, tags = 'button', anchor = tk.NW)
-            canvas.create_window(WIDTH-10, 10, window = quitButton, state = tk.NORMAL, tags='button', anchor = tk.NE)
+            canvas.create_window(WIDTH-10, 10, window = self.quitButton, state = tk.NORMAL, 
+                                 tags='button', anchor = tk.NE)
             
             self.gear = tk.PhotoImage(file='gear.png')
             canvas.create_image(WIDTH-64, TOP_MARGIN, anchor=tk.NW, image=self.gear, tag ='gear')
@@ -109,9 +111,8 @@ class Wordle():
             
         x = WIDTH//2    
         y = TOP_MARGIN + ROWS*(SQUARE+SPACE)
-        print('notice' , y)
         canvas.create_text(x, y, text = 'Use \u2191 \u2193 to scroll', tag = 'scroll',
-                                      font = ('Helvetica', 14), fill = FORE, anchor = tk.N, state = tk.HIDDEN)            
+                                      font = ('Helvetica', 14), fill = FORE, anchor = tk.N)            
         self.makeQwerty()             
             
     def drawControls(self):        
@@ -129,6 +130,7 @@ class Wordle():
         canvas = self.canvas
         if self.letter != self.wordLength:
             return
+        self.showGuess()
         word = ''
         g = self.guess
         for letter in range(self.wordLength):
@@ -140,15 +142,13 @@ class Wordle():
             canvas.itemconfigure(self.notice, text=msg, state=tk.NORMAL)      
             return
         self.colorize(word)
+        self.guess += 1
         if word == self.answer:
             self.celebrate()
         else:
-            self.guess += 1
             self.letter = 0
-            if self.guess > ROWS:
-                canvas.itemconfigure('scroll', state = tk.NORMAL)
-        if self.guess == self.maxGuesses:
-            self.lose()
+            if self.guess == self.maxGuesses:
+                self.lose()
             
     def deletePressed(self):
         canvas = self.canvas
@@ -162,16 +162,34 @@ class Wordle():
         canvas.itemconfigure(f'L{guess}{letter}', text="")
         self.letter = letter
         
-    def scroll(self, delta):
+    def scrollDown(self, delta):
         # Scroll boxes down by delta lines (negative delta means scroll up)
         
-        #  ***** TODO: Check boundary conditions  **********
-        
+        if delta == 0:
+            return
         top = self.scrollTop
+        bottom = top + ROWS -1
         squares = self.squares
         letters = self.letters
         canvas = self.canvas
         length = self.wordLength
+        
+        # Can't scroll down if current guess is in the window
+        
+        if delta > 0 and top <=  self.guess <= bottom:
+            return
+        
+        # Can't scroll down if the game is over and the last
+        # guess is in the window
+        
+        if delta > 0 and self.state != 'active':
+            if top <= min(self.guess, self.maxGuesses - 1) <= bottom:
+                return
+            
+        
+        # Can't scroll up if already at the top
+        if delta < 0 and top == 0:
+            return
         
         ydelta = -delta * (SQUARE + SPACE)
         for row in range(self.maxGuesses):
@@ -188,26 +206,27 @@ class Wordle():
                     canvas.move(widget, 0, ydelta)
                     
         self.scrollTop += delta
+        
+    def showGuess(self):
+        if not self.scrollTop <= self.guess < self.scrollTop + ROWS:
+            self.scrollDown(self.guess-(self.scrollTop+ROWS-1))        
             
     def alphaPressed(self, c):
         canvas = self.canvas
         if self.letter == self.wordLength:
             return
-        if self.letter == 0 and self.guess >= ROWS:
-            self.scroll(1)
-            canvas.itemconfigure('scroll', state=tk.HIDDEN)
+        self.showGuess()
         canvas.itemconfigure(f'L{self.guess}{self.letter}', text = c)
         self.letter += 1
         
     def keyPressed(self, event):
         key = event.keysym
-        if self.canvas.itemcget('scroll', 'state') == tk.NORMAL:
-            if key in ('Up', 'KP_Up'):
-                self.scroll(-1)
-                return
-            elif key in ('Down', 'KP_Down'):
-                self.scroll(1)
-                return
+        if key in ('Up', 'KP_Up'):
+            self.scrollDown(-1)
+            return
+        elif key in ('Down', 'KP_Down'):
+            self.scrollDown(1)
+            return
         if self.state != 'active':
             if key not in 'PQpq':
                 return
@@ -215,7 +234,7 @@ class Wordle():
                 self.play()
                 return
             if key.upper() == 'Q':
-                self.root.destroy()
+                self.quitButton.invoke()
         if not key.isalpha():
             return
         if key in ('Return', 'KP_Enter'):
@@ -316,9 +335,7 @@ class Wordle():
         canvas.itemconfigure('button', state = tk.NORMAL)
         canvas.itemconfigure(self.notice,  state=tk.NORMAL,
                              text = f'Out of guesses.  Word is "{self.answer}"\n{minutes} minutes {seconds} seconds')     
-        
-    def quit(self, event):
-        self.root.destroy()
+
 
     def newGame(self, event):
         self.play()
@@ -373,4 +390,3 @@ try:
         Wordle(True)
 except IndexError:
     Wordle(False)
-
