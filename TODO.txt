@@ -1,0 +1,4 @@
+1. Fix coloring on duplicate letters 
+2. Longer words
+3. More guesses
+4. Hard mode? 
