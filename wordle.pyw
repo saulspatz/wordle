@@ -53,7 +53,7 @@ class Wordle():
         self.words = pickle.load(open('guesses5.set', 'rb'))
         self.answers = pickle.load(open('answers5.list', 'rb'))
         self.wordLength = 5
-        self.maxGuesses = 9
+        self.maxGuesses = 6
         self.interval = 400
         root = self.root = tk.Tk()
         root.title("WORDLE")
@@ -199,7 +199,7 @@ class Wordle():
         for row in range(top+delta, top+delta+ROWS):
             for col in range(length):
                 canvas.itemconfigure(squares[row, col], state = tk.NORMAL)
-                canvas.itemconfigure(letters[row, col], state = tk.NORMAL)     
+                canvas.itemconfigure(letters[row, col], state = tk.NORMAL) 
         for row in range(self.maxGuesses):
             for col in range(length):
                 for widget in (squares[row, col], letters[row, col]):
