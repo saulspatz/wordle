@@ -82,18 +82,21 @@ class Wordle():
         canvas.bind('<KeyPress>', self.keyPressed)
         self.notice = canvas.create_text(WIDTH//2, TOP_MARGIN//2, justify=tk.CENTER, state=tk.HIDDEN,
                                text='', fill=FORE, font = ('Helvetica', 16))
-        self.quitButton = tk.Button(canvas, bg='red', fg=FORE, activebackground='red', 
-                                  activeforeground = FORE,
+        self.quitButton = tk.Button(canvas, background='red',  foreground = FORE,
+                                activebackground='red',  activeforeground = FORE,
                                    text='Quit', font=('Helvetica', '24', 'bold'),
                                    command = self.root.destroy, height = 1, width = 6, relief= tk.FLAT)
-        playButton = tk.Button(canvas, bg='green', fg=FORE,  activebackground='green', activeforeground = FORE,
+        
+        
+        playButton = tk.Button(canvas, bg='green', fg=FORE,  background='green', foreground = FORE,
+                                   activebackground='green', activeforeground = FORE,
                                    text='Play', font=('Helvetica', '24', 'bold'),
                                    command = self.play, height = 1, width = 6, relief = tk.FLAT)
             
         canvas.create_window(10, 10, window=playButton, state=tk.NORMAL, tags = 'button', anchor = tk.NW)
         canvas.create_window(WIDTH-10, 10, window = self.quitButton, state = tk.NORMAL, 
                                  tags='button', anchor = tk.NE)
-            
+                   
         self.gear = tk.PhotoImage(file='gear.png')
         canvas.create_image(WIDTH-64, TOP_MARGIN, anchor=tk.NW, image=self.gear, tag ='gear')
         canvas.tag_bind('gear', '<ButtonRelease-1>', lambda e: self.controlFrame.tkraise())
@@ -316,8 +319,11 @@ class Wordle():
         seconds = elapsed%60
         self.state = 'win'
         canvas.itemconfigure('button', state = tk.NORMAL)
-        canvas.itemconfigure(self.notice, state=tk.NORMAL,
-                             text = f'{self.guess} guesses\n{minutes} minutes {seconds} seconds')
+        msg = f'{self.guess} guess'
+        if self.guess > 1:            
+            msg += 'es'
+        msg += f'\n{minutes} minutes {seconds} seconds'
+        canvas.itemconfigure(self.notice, state=tk.NORMAL, text = msg)
         
     def lose(self):
         canvas = self.canvas
