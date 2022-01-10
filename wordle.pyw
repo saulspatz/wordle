@@ -262,6 +262,7 @@ class Wordle():
         self.state = 'active'
          
     def revealLetter(self, idx, letter, color):
+        rank = {UNKNOWN:0, BAD:1, CLOSE:2, GOOD:3}
         qwerty = self.qwerty
         game = self.game
         canvas = self.canvas
@@ -271,7 +272,7 @@ class Wordle():
         game.itemconfigure(letters[g, idx], text=letter.upper())
         game.itemconfigure(squares[g, idx], fill=color)
         current = canvas.itemcget(qwerty[letter], 'fill') 
-        if color != CLOSE or current != GOOD:
+        if rank[color] > rank[current]:
             canvas.itemconfigure(qwerty[letter], fill = color)
         canvas.update()
         
@@ -293,9 +294,7 @@ class Wordle():
             available[c] = max(answer.count(c) - used[c], 0)
         for i in others:
             c = word[i]
-            if available[c] == 0:
-                continue
-            colors[i] = CLOSE
+            colors[i] = CLOSE if available[c] >0 else BAD
             available[c] -= 1
             
         for i in range(self.wordLength):
