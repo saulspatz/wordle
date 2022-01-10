@@ -317,7 +317,7 @@ class Wordle():
         self.state = 'win'
         canvas.itemconfigure('button', state = tk.NORMAL)
         canvas.itemconfigure(self.notice, state=tk.NORMAL,
-                             text = f'{self.guess+1} guesses\n{minutes} minutes {seconds} seconds')
+                             text = f'{self.guess} guesses\n{minutes} minutes {seconds} seconds')
         
     def lose(self):
         canvas = self.canvas
