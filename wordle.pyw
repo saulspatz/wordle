@@ -1,9 +1,12 @@
 import tkinter as tk
 import random
 import pickle
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 import sys
 import time
+
+Settings = namedtuple('Settings', 'wordLength maxGuesses hardMode interval')
+defaultSettings = Settings(5, 6, False, 0)
 
 class MyCanvas(tk.Canvas):
     def __init__(self, parent, **kwargs):
@@ -52,9 +55,6 @@ class Wordle():
         self.debug = debug
         self.words = pickle.load(open('guesses5.set', 'rb'))
         self.answers = pickle.load(open('answers5.list', 'rb'))
-        self.wordLength = 5
-        self.maxGuesses = 9
-        self.interval = 400
         root = self.root = tk.Tk()
         root.title("WORDLE")
         frame = self.frame = tk.Frame(root)
@@ -65,6 +65,7 @@ class Wordle():
         self.controlFrame = tk.Frame(frame)
         self.controls = tk.Canvas(self.controlFrame, width=WIDTH, height=HEIGHT, background = BACK)
         self.controls.pack()
+        self.setDefaults()
         self.drawCanvas()       
         self.drawControls()        
         self.playFrame.grid(row = 0, column = 0)
@@ -72,12 +73,27 @@ class Wordle():
         self.play()
         root.mainloop()        
         
+    def setDefaults(self):
+        global lengthVar
+        global guessVar
+        global speedVar
+        global hardVar
+        
+        lengthVar = tk.IntVar()
+        guessVar = tk.IntVar()
+        speedVar = tk.IntVar()
+        hardVar = tk.IntVar()        
+        
+        lengthVar.set(defaultSettings.wordLength)
+        guessVar.set(defaultSettings.maxGuesses)
+        speedVar.set(defaultSettings.interval)
+        hardVar.set(defaultSettings.hardMode)
+        
+        self.settings = defaultSettings
+                
     def drawCanvas(self):
         canvas = self.canvas
-        y = TOP_MARGIN
-        x = WIDTH//2 - 2*(SQUARE+SPACE) - SQUARE//2        
-        self.game = self.drawGame()
-        canvas.create_window(x, y, window = self.game, anchor = tk.NW)                
+        self.drawGame()               
         canvas.focus_set()
         canvas.bind('<KeyPress>', self.keyPressed)
         self.notice = canvas.create_text(WIDTH//2, TOP_MARGIN//2, justify=tk.CENTER, state=tk.HIDDEN,
@@ -108,46 +124,106 @@ class Wordle():
         self.makeQwerty()     
         
     def drawGame(self):
+        settings = self.settings
+        canvas = self.canvas
         yview = ROWS*(SQUARE+SPACE)  # viewport size
-        xview = self.wordLength * (SQUARE+ SPACE)
-        yboard = self.maxGuesses *(SQUARE + SPACE) # board size
-        canvas = MyCanvas(self.canvas, height = yview, width = xview, background = BACK)
-        canvas.configure(scrollregion=(0, 0,xview, yboard), borderwidth=0, highlightthickness=0,
+        xview = settings.wordLength * (SQUARE+ SPACE)
+        yboard = settings.maxGuesses *(SQUARE + SPACE) # board size
+        game = MyCanvas(self.canvas, height = yview, width = xview, background = BACK)
+        game.configure(scrollregion=(0, 0,xview, yboard), borderwidth=0, highlightthickness=0,
                                       xscrollincrement= 0, yscrollincrement= SQUARE + SPACE)        
         self.squares = squares =  {}
         self.letters = letters = {}
         y = 0
-        for row in range(self.maxGuesses):
+        for row in range(settings.maxGuesses):
             x = 0
-            for col in range(self.wordLength):
-                squares[row,col] = canvas.create_rounded_rectangle(x, y, x+SQUARE, y+SQUARE,  
+            for col in range(settings.wordLength):
+                squares[row,col] = game.create_rounded_rectangle(x, y, x+SQUARE, y+SQUARE,  
                                                                        outline = OUTLINE)
-                letters[row, col] = canvas.create_text(x+SQUARE//2, y+SQUARE//2, font = ('Helvetica', '24', 'bold' ), 
+                letters[row, col] = game.create_text(x+SQUARE//2, y+SQUARE//2, font = ('Helvetica', '24', 'bold' ), 
                                                            justify=tk.CENTER,  text='', tag = f'L{row}{col}')  
                 x += SQUARE+SPACE
             y += SQUARE+SPACE
-        return canvas
+        self.game = game
+        y = TOP_MARGIN
+        length = self.settings.wordLength
+        gameWidth = length * SQUARE + (length-1) * SPACE 
+        x = (WIDTH - gameWidth)//2   
+        canvas.delete('board')
+        canvas.create_window(x, y, window = self.game, anchor = tk.NW, tag = 'board' )         
+        
+    def getControls(self, event):
+        global lengthVar
+        global guessVar
+        global speedVar
+        global hardVar
+        
+        length = lengthVar.get()
+        tries = guessVar.get()
+        speed = speedVar.get()
+        hard = hardVar.get()
+        settings = self.settings
+        changed = False
+        if settings.wordLength != length or settings.maxGuesses != tries:
+            changed = True
+        self.settings = Settings(length, tries, speed, hard)
+        if changed:
+            self.drawGame()
+        self.playFrame.tkraise()
+        self.play()
+        
                         
-    def drawControls(self):        
+    def drawControls(self):   
+        global lengthVar
+        global guessVar
+        global speedVar
+        global hardVar
+        
         controls = self.controls
         x = WIDTH - 64
         y = TOP_MARGIN
         side = 24
+        padx = 10
+        pady = 20
         controls.create_rectangle(x, y, x+ side, y+side, outline= OUTLINE, fill=BACK, tag='done')
         controls.create_line(x, y, x+side, y+side, width=1, fill=FORE, tag='done' )
         controls.create_line(x+side, y, x, y+side, width=1, fill=FORE, tag='done' )
-        controls.tag_bind('done', '<ButtonRelease-1>', lambda e: self.playFrame.tkraise())
+        controls.tag_bind('done', '<ButtonRelease-1>', self.getControls)
         controls.create_text(WIDTH//2, TOP_MARGIN, anchor=tk.N, text="Settings", fill = FORE, font = ('Helvetica', 24))
+        frame = tk.Frame(controls, background = BACK)
+        label = tk.Label(frame, text = 'Word Length', fg = FORE, bg = BACK, font = ('Helvetica', 16))
+        scale = tk.Scale(frame, from_=5, to = 8, orient = tk.HORIZONTAL, variable = lengthVar)
+        label.grid(row = 0, column=0, sticky='EW', pady = pady, padx=padx)
+        scale.grid(row = 0, column=1, sticky='EW', pady = pady, padx=padx)
+        
+        label = tk.Label(frame, text = 'Number of Tries', fg = FORE, bg = BACK, font = ('Helvetica', 16))
+        scale = tk.Scale(frame, from_=6, to = 20, orient = tk.HORIZONTAL, variable = guessVar)
+        label.grid(row = 1, column=0, sticky='EW', pady = pady, padx=padx)
+        scale.grid(row = 1, column=1, sticky='EW', pady = pady, padx=padx)   
+        
+        label = tk.Label(frame, text = 'Animation Speed\n(smaller is faster)',
+                         fg = FORE, bg = BACK, font = ('Helvetica', 16))
+        scale = tk.Scale(frame, from_=0, to = 1000, orient = tk.HORIZONTAL, variable = speedVar)
+        label.grid(row = 2, column=0, sticky='EW', pady = pady, padx=padx)
+        scale.grid(row = 2, column=1, sticky='EW', pady = pady, padx=padx)    
+        
+        label = tk.Label(frame, text = 'Hard Mode', fg = FORE, bg = BACK, font = ('Helvetica', 16))
+        check = tk.Checkbutton(frame, variable = hardVar)
+        label.grid(row = 3, column=0, sticky='EW', pady = pady, padx=padx)
+        check.grid(row = 3, column=1, sticky='EW', pady = pady, padx=padx)        
+        
+        controls.create_window(WIDTH//2, HEIGHT//2, window = frame)
         
     def enterPressed(self):
         canvas = self.canvas
         game = self.game
-        if self.letter != self.wordLength:
+        settings = self.settings
+        if self.letter != settings.wordLength:
             return
         self.showGuess()
         word = ''
         g = self.guess
-        for letter in range(self.wordLength):
+        for letter in range(settings.wordLength):
             tag = f'L{g}{letter}'
             word += game.itemcget(tag, 'text')
         word = word.lower()
@@ -161,7 +237,7 @@ class Wordle():
             self.celebrate()
         else:
             self.letter = 0
-            if self.guess == self.maxGuesses:
+            if self.guess == settings.maxGuesses:
                 self.lose()
             
     def deletePressed(self):
@@ -183,7 +259,7 @@ class Wordle():
         if delta == 0:
             return
         top = self.scrollTop
-        maxTop = self.maxGuesses - ROWS + 1
+        maxTop = self.settings.maxGuesses - ROWS + 1
         
         # Can't scroll down pass last row
         
@@ -203,8 +279,9 @@ class Wordle():
             self.scrollDown(1)        
             
     def alphaPressed(self, c):
+        settings = self.settings
         game = self.game
-        if self.letter == self.wordLength:
+        if self.letter == settings.wordLength:
             return
         self.showGuess()
         
@@ -240,6 +317,7 @@ class Wordle():
     
     def play(self):
         self.playFrame.tkraise()
+        settings = self.settings
         game = self.game
         canvas = self.canvas
         letters = self.letters
@@ -255,8 +333,8 @@ class Wordle():
         self.scrollTop = 0
         canvas.itemconfigure(self.notice, text='', state=tk.HIDDEN) 
         canvas.itemconfigure('button', state=tk.HIDDEN)
-        for row in range(self.maxGuesses):
-            for col in range(self.wordLength):
+        for row in range(settings.maxGuesses):
+            for col in range(settings.wordLength):
                 game.itemconfigure(letters[row, col] , text='', fill=FORE)
                 game.itemconfigure(squares[row, col], fill='')
         self.state = 'active'
@@ -277,17 +355,18 @@ class Wordle():
         canvas.update()
         
     def colorize(self, word):
+        settings = self.settings
         canvas = self.game
         letters = self.letters
         used = defaultdict(int)
-        colors = self.wordLength*[None]
+        colors = settings.wordLength*[None]
         answer = self.answer
-        correct = [i for i in range(self.wordLength) if word[i]==answer[i] ]
+        correct = [i for i in range(settings.wordLength) if word[i]==answer[i] ]
         g = self.guess
         for c in correct:
             colors[c] = GOOD 
             used[word[c]] += 1
-        others = [i for i in range(self.wordLength) if i not in correct and word[i] in answer]
+        others = [i for i in range(settings.wordLength) if i not in correct and word[i] in answer]
         available = {}
         for i in others:
             c = word[i]
@@ -297,13 +376,13 @@ class Wordle():
             colors[i] = CLOSE if available[c] >0 else BAD
             available[c] -= 1
             
-        for i in range(self.wordLength):
+        for i in range(settings.wordLength):
             if i not in correct + others:
                 colors[i] = BAD
                 
         #Animated coloring
-        interval = self.interval
-        for i in range(self.wordLength):
+        interval = settings.interval
+        for i in range(settings.wordLength):
             canvas.itemconfigure(letters[g,i], text = '')
             canvas.update()
 
