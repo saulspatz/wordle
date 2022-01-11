@@ -6,7 +6,7 @@ import sys
 import time
 
 Settings = namedtuple('Settings', 'wordLength maxGuesses hardMode interval')
-defaultSettings = Settings(5, 6, False, 0)
+defaultSettings = Settings(5, 6, False, 400)
 
 class MyCanvas(tk.Canvas):
     def __init__(self, parent, **kwargs):
@@ -86,7 +86,7 @@ class Wordle():
         
         lengthVar.set(defaultSettings.wordLength)
         guessVar.set(defaultSettings.maxGuesses)
-        speedVar.set(defaultSettings.interval)
+        speedVar.set(defaultSettings.interval//100)
         hardVar.set(defaultSettings.hardMode)
         
         self.settings = defaultSettings
@@ -160,19 +160,19 @@ class Wordle():
         
         length = lengthVar.get()
         tries = guessVar.get()
-        speed = speedVar.get()
+        speed = 100*speedVar.get()
         hard = hardVar.get()
         settings = self.settings
         changed = False
-        if settings.wordLength != length or settings.maxGuesses != tries:
+        if settings.wordLength != length or settings.maxGuesses != tries or settings.hardMode != hard:
             changed = True
-        self.settings = Settings(length, tries, speed, hard)
+        self.settings = Settings(length, tries, hard, speed)
         if changed:
             self.drawGame()
+            self.play()
         self.playFrame.tkraise()
-        self.play()
+       
         
-                        
     def drawControls(self):   
         global lengthVar
         global guessVar
@@ -190,6 +190,9 @@ class Wordle():
         controls.create_line(x+side, y, x, y+side, width=1, fill=FORE, tag='done' )
         controls.tag_bind('done', '<ButtonRelease-1>', self.getControls)
         controls.create_text(WIDTH//2, TOP_MARGIN, anchor=tk.N, text="Settings", fill = FORE, font = ('Helvetica', 24))
+        controls.create_text(WIDTH//2, TOP_MARGIN+40, anchor=tk.N, 
+                             text = '   Changing anything other than\nanimation speed starts new game.',
+                             fill=FORE, font=('Helvetica, 16'))
         frame = tk.Frame(controls, background = BACK)
         label = tk.Label(frame, text = 'Word Length', fg = FORE, bg = BACK, font = ('Helvetica', 16))
         scale = tk.Scale(frame, from_=5, to = 8, orient = tk.HORIZONTAL, variable = lengthVar)
@@ -203,14 +206,14 @@ class Wordle():
         
         label = tk.Label(frame, text = 'Animation Speed\n(smaller is faster)',
                          fg = FORE, bg = BACK, font = ('Helvetica', 16))
-        scale = tk.Scale(frame, from_=0, to = 1000, orient = tk.HORIZONTAL, variable = speedVar)
-        label.grid(row = 2, column=0, sticky='EW', pady = pady, padx=padx)
-        scale.grid(row = 2, column=1, sticky='EW', pady = pady, padx=padx)    
+        scale = tk.Scale(frame, from_=0, to = 10, orient = tk.HORIZONTAL, variable = speedVar)
+        label.grid(row = 3, column=0, sticky='EW', pady = pady, padx=padx)
+        scale.grid(row = 3, column=1, sticky='EW', pady = pady, padx=padx)    
         
         label = tk.Label(frame, text = 'Hard Mode', fg = FORE, bg = BACK, font = ('Helvetica', 16))
         check = tk.Checkbutton(frame, variable = hardVar)
-        label.grid(row = 3, column=0, sticky='EW', pady = pady, padx=padx)
-        check.grid(row = 3, column=1, sticky='EW', pady = pady, padx=padx)        
+        label.grid(row = 2, column=0, sticky='EW', pady = pady, padx=padx)
+        check.grid(row = 2, column=1, sticky='EW', pady = pady, padx=padx)        
         
         controls.create_window(WIDTH//2, HEIGHT//2, window = frame)
         
