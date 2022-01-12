@@ -6,7 +6,7 @@ import sys
 import time
 
 Settings = namedtuple('Settings', 'wordLength maxGuesses hardMode interval')
-defaultSettings = Settings(5, 6, False, 400)
+defaultSettings = Settings(5, 6, True, 400)
 
 class MyCanvas(tk.Canvas):
     def __init__(self, parent, **kwargs):
@@ -171,7 +171,6 @@ class Wordle():
             self.drawGame()
             self.play()
         self.playFrame.tkraise()
-       
         
     def drawControls(self):   
         global lengthVar
@@ -234,6 +233,8 @@ class Wordle():
             msg = f'{word} not in word list'
             canvas.itemconfigure(self.notice, text=msg, state=tk.NORMAL)      
             return
+        if not self.hardMode(word):
+            return
         self.colorize(word)
         self.guess += 1
         if word == self.answer:
@@ -242,6 +243,23 @@ class Wordle():
             self.letter = 0
             if self.guess == settings.maxGuesses:
                 self.lose()
+                
+    def hardMode(self, word):
+        if not self.settings.hardMode:
+            return True
+        for position in self.known:
+            letter = self.answer[position]
+            if word[position] != letter: 
+                msg = f'Hard mode: Letter {1+position} must be "{letter.upper()}"'
+                self.canvas.itemconfigure(self.notice, text=msg, state=tk.NORMAL) 
+                return False
+        for letter, need in self.present.items():
+            have = word.count(letter)
+            if have < need:
+                msg = f'Hard mode: Must have at least {need} of "{letter.upper()}"'
+                self.canvas.itemconfigure(self.notice, text=msg, state=tk.NORMAL) 
+                return False                
+        return True
             
     def deletePressed(self):
         canvas = self.canvas
@@ -334,6 +352,9 @@ class Wordle():
         self.guess = 0
         self.letter = 0
         self.scrollTop = 0
+        if self.settings.hardMode:
+            self.known = set()  # known positions
+            self.present = defaultdict(int)  # key=letter, value=count 
         canvas.itemconfigure(self.notice, text='', state=tk.HIDDEN) 
         canvas.itemconfigure('button', state=tk.HIDDEN)
         for row in range(settings.maxGuesses):
@@ -365,9 +386,11 @@ class Wordle():
         colors = settings.wordLength*[None]
         answer = self.answer
         correct = [i for i in range(settings.wordLength) if word[i]==answer[i] ]
+        if settings.hardMode:
+            self.known = set(correct)
         g = self.guess
         for c in correct:
-            colors[c] = GOOD 
+            colors[c] = GOOD
             used[word[c]] += 1
         others = [i for i in range(settings.wordLength) if i not in correct and word[i] in answer]
         available = {}
@@ -382,6 +405,12 @@ class Wordle():
         for i in range(settings.wordLength):
             if i not in correct + others:
                 colors[i] = BAD
+                
+        if settings.hardMode:
+            self.present.clear()
+            for i, color in enumerate(colors):
+                if color != BAD:
+                    self.present[word[i]] += 1
                 
         #Animated coloring
         interval = settings.interval
