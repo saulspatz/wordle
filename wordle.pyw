@@ -70,7 +70,8 @@ class Wordle():
         self.drawControls()        
         self.playFrame.grid(row = 0, column = 0)
         self.controlFrame.grid(row = 0, column = 0)
-        self.play()
+        self.state = 'idle'
+        self.showControls(None)
         root.mainloop()        
         
     def setDefaults(self):
@@ -115,7 +116,7 @@ class Wordle():
                    
         self.gear = tk.PhotoImage(file='gear.png')
         canvas.create_image(WIDTH-64, TOP_MARGIN, anchor=tk.NW, image=self.gear, tag ='gear')
-        canvas.tag_bind('gear', '<ButtonRelease-1>', lambda e: self.controlFrame.tkraise())
+        canvas.tag_bind('gear', '<ButtonRelease-1>', self.showControls)
             
         x = WIDTH//2    
         y = TOP_MARGIN + ROWS*(SQUARE+SPACE)
@@ -152,6 +153,18 @@ class Wordle():
         canvas.delete('board')
         canvas.create_window(x, y, window = self.game, anchor = tk.NW, tag = 'board' )         
         
+    def showControls(self, event):
+        controls = self.controls
+        state = tk.DISABLED if self.state == 'active' else tk.NORMAL
+        for widget in controls.frame.winfo_children():
+            widget.configure(state=state)
+        for widget in controls.animate:
+            widget.configure(state=tk.NORMAL)
+        if state == tk.DISABLED and self.settings.hardMode:
+            for widget in controls.hardMode:
+                widget.configure(state=tk.NORMAL)
+        self.controlFrame.tkraise()
+        
     def getControls(self, event):
         global lengthVar
         global guessVar
@@ -162,12 +175,8 @@ class Wordle():
         tries = guessVar.get()
         speed = 100*speedVar.get()
         hard = hardVar.get()
-        settings = self.settings
-        changed = False
-        if settings.wordLength != length or settings.maxGuesses != tries or settings.hardMode != hard:
-            changed = True
         self.settings = Settings(length, tries, hard, speed)
-        if changed:
+        if self.state != 'active':
             self.drawGame()
             self.play()
         self.playFrame.tkraise()
@@ -179,6 +188,7 @@ class Wordle():
         global hardVar
         
         controls = self.controls
+    
         x = WIDTH - 64
         y = TOP_MARGIN
         side = 24
@@ -189,10 +199,11 @@ class Wordle():
         controls.create_line(x+side, y, x, y+side, width=1, fill=FORE, tag='done' )
         controls.tag_bind('done', '<ButtonRelease-1>', self.getControls)
         controls.create_text(WIDTH//2, TOP_MARGIN, anchor=tk.N, text="Settings", fill = FORE, font = ('Helvetica', 24))
-        controls.create_text(WIDTH//2, TOP_MARGIN+40, anchor=tk.N, 
-                             text = '   Changing anything other than\nanimation speed starts new game.',
-                             fill=FORE, font=('Helvetica, 16'))
-        frame = tk.Frame(controls, background = BACK)
+        #controls.create_text(WIDTH//2, TOP_MARGIN+40, anchor=tk.N, 
+                             #text = "Hard mode can't be turned on during a game.",
+                             #fill=FORE, font=('Helvetica, 16'))
+        controls.frame = frame = tk.Frame(controls, background = BACK)
+        
         label = tk.Label(frame, text = 'Word Length', fg = FORE, bg = BACK, font = ('Helvetica', 16))
         scale = tk.Scale(frame, from_=5, to = 8, orient = tk.HORIZONTAL, variable = lengthVar)
         label.grid(row = 0, column=0, sticky='EW', pady = pady, padx=padx)
@@ -208,11 +219,13 @@ class Wordle():
         scale = tk.Scale(frame, from_=0, to = 10, orient = tk.HORIZONTAL, variable = speedVar)
         label.grid(row = 3, column=0, sticky='EW', pady = pady, padx=padx)
         scale.grid(row = 3, column=1, sticky='EW', pady = pady, padx=padx)    
+        controls.animate = {label, scale}
         
         label = tk.Label(frame, text = 'Hard Mode', fg = FORE, bg = BACK, font = ('Helvetica', 16))
         check = tk.Checkbutton(frame, variable = hardVar)
         label.grid(row = 2, column=0, sticky='EW', pady = pady, padx=padx)
-        check.grid(row = 2, column=1, sticky='EW', pady = pady, padx=padx)        
+        check.grid(row = 2, column=1, sticky='EW', pady = pady, padx=padx)   
+        controls.hardMode = {label, check}
         
         controls.create_window(WIDTH//2, HEIGHT//2, window = frame)
         
