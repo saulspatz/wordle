@@ -53,8 +53,6 @@ UNKNOWN = 'LightGray'
 class Wordle():
     def __init__(self, debug):
         self.debug = debug
-        self.words = pickle.load(open('guesses5.set', 'rb'))
-        self.answers = pickle.load(open('answers5.list', 'rb'))
         root = self.root = tk.Tk()
         root.title("WORDLE")
         frame = self.frame = tk.Frame(root)
@@ -177,6 +175,8 @@ class Wordle():
         hard = hardVar.get()
         self.settings = Settings(length, tries, hard, speed)
         if self.state != 'active':
+            self.words = pickle.load(open(f'guesses{length}.set', 'rb'))
+            self.answers = pickle.load(open(f'answers{length}.list', 'rb'))            
             self.drawGame()
             self.play()
         self.playFrame.tkraise()
