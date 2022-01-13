@@ -6,7 +6,7 @@ import sys
 import time
 
 Settings = namedtuple('Settings', 'wordLength maxGuesses hardMode interval')
-defaultSettings = Settings(5, 6, True, 400)
+defaultSettings = Settings(5, 6, False, 400)
 
 class MyCanvas(tk.Canvas):
     def __init__(self, parent, **kwargs):
