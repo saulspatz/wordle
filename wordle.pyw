@@ -7,8 +7,8 @@ from collections import defaultdict, namedtuple
 import sys
 import time
 
-Settings = namedtuple('Settings', 'wordLength maxGuesses hardMode interval')
-defaultSettings = Settings(5, 6, False, 400)
+Settings = namedtuple('Settings', 'wordLength maxGuesses hardMode interval save')
+defaultSettings = Settings(5, 6, False, 400, True)
 
 class MyCanvas(tk.Canvas):
     def __init__(self, parent, **kwargs):
@@ -79,16 +79,19 @@ class Wordle():
         global guessVar
         global speedVar
         global hardVar
+        global saveVar
         
         lengthVar = tk.IntVar()
         guessVar = tk.IntVar()
         speedVar = tk.IntVar()
         hardVar = tk.IntVar()        
+        saveVar = tk.IntVar()
         
         lengthVar.set(defaultSettings.wordLength)
         guessVar.set(defaultSettings.maxGuesses)
         speedVar.set(defaultSettings.interval//100)
         hardVar.set(defaultSettings.hardMode)
+        saveVar.set(defaultSettings.save)
         
         self.settings = defaultSettings
                 
@@ -99,21 +102,7 @@ class Wordle():
         canvas.bind('<KeyPress>', self.keyPressed)
         self.notice = canvas.create_text(WIDTH//2, TOP_MARGIN//2, justify=tk.CENTER, state=tk.HIDDEN,
                                text='', fill=FORE, font = ('Helvetica', 16))
-        #self.quitButton = tk.Button(canvas, background='red',  foreground = FORE,
-                                #activebackground='red',  activeforeground = FORE,
-                                   #text='Quit', font=('Helvetica', '24', 'bold'),
-                                   #command = self.root.destroy, height = 1, width = 6, relief= tk.FLAT)
-        
-        
-        #playButton = tk.Button(canvas, bg='green', fg=FORE,  background='green', foreground = FORE,
-                                   #activebackground='green', activeforeground = FORE,
-                                   #text='Play', font=('Helvetica', '24', 'bold'),
-                                   #command = self.play, height = 1, width = 6, relief = tk.FLAT)
-            
-        #canvas.create_window(10, 10, window=playButton, state=tk.NORMAL, tags = 'button', anchor = tk.NW)
-        #canvas.create_window(WIDTH-10, 10, window = self.quitButton, state = tk.NORMAL, 
-                                 #tags='button', anchor = tk.NE)
-                   
+                          
         self.gear = tk.PhotoImage(file='gear.png')
         canvas.create_image(WIDTH-64, TOP_MARGIN, anchor=tk.NW, image=self.gear, tag ='gear')
         canvas.tag_bind('gear', '<ButtonRelease-1>', self.showControls)
@@ -175,8 +164,9 @@ class Wordle():
         tries = guessVar.get()
         speed = 100*speedVar.get()
         hard = hardVar.get()
-        self.settings = Settings(length, tries, hard, speed)
-        if self.state != 'active':
+        save = saveVar.get()
+        self.settings = Settings(length, tries, hard, speed, save)
+        if self.state not in ('active', 'offerSave'):
             self.words = pickle.load(open(f'guesses{length}.set', 'rb'))
             self.answers = pickle.load(open(f'answers{length}.list', 'rb'))            
             self.drawGame()
@@ -188,6 +178,7 @@ class Wordle():
         global guessVar
         global speedVar
         global hardVar
+        global saveVar
         
         controls = self.controls
     
@@ -201,9 +192,6 @@ class Wordle():
         controls.create_line(x+side, y, x, y+side, width=1, fill=FORE, tag='done' )
         controls.tag_bind('done', '<ButtonRelease-1>', self.getControls)
         controls.create_text(WIDTH//2, TOP_MARGIN, anchor=tk.N, text="Settings", fill = FORE, font = ('Helvetica', 24))
-        #controls.create_text(WIDTH//2, TOP_MARGIN+40, anchor=tk.N, 
-                             #text = "Hard mode can't be turned on during a game.",
-                             #fill=FORE, font=('Helvetica, 16'))
         controls.frame = frame = tk.Frame(controls, background = BACK)
         
         label = tk.Label(frame, text = 'Word Length', fg = FORE, bg = BACK, font = ('Helvetica', 16))
@@ -219,15 +207,21 @@ class Wordle():
         label = tk.Label(frame, text = 'Animation Speed\n(smaller is faster)',
                          fg = FORE, bg = BACK, font = ('Helvetica', 16))
         scale = tk.Scale(frame, from_=0, to = 10, orient = tk.HORIZONTAL, variable = speedVar)
-        label.grid(row = 3, column=0, sticky='EW', pady = pady, padx=padx)
-        scale.grid(row = 3, column=1, sticky='EW', pady = pady, padx=padx)    
+        label.grid(row = 2, column=0, sticky='EW', pady = pady, padx=padx)
+        scale.grid(row = 2, column=1, sticky='EW', pady = pady, padx=padx)    
         controls.animate = {label, scale}
         
         label = tk.Label(frame, text = 'Hard Mode', fg = FORE, bg = BACK, font = ('Helvetica', 16))
         check = tk.Checkbutton(frame, variable = hardVar)
-        label.grid(row = 2, column=0, sticky='EW', pady = pady, padx=padx)
-        check.grid(row = 2, column=1, sticky='EW', pady = pady, padx=padx)   
+        label.grid(row = 3, column=0, sticky='EW', pady = pady, padx=padx)
+        check.grid(row = 3, column=1, sticky='EW', pady = pady, padx=padx)   
         controls.hardMode = {label, check}
+        
+        label = tk.Label(frame, text = 'Offer to Save\nUnknown Words', fg = FORE, bg = BACK, font = ('Helvetica', 16))
+        check = tk.Checkbutton(frame, variable = saveVar)
+        label.grid(row = 4, column=0, sticky='EW', pady = pady, padx=padx)
+        check.grid(row = 4, column=1, sticky='EW', pady = pady, padx=padx)   
+        controls.save = {label, check}        
         
         controls.create_window(WIDTH//2, HEIGHT//2, window = frame)
         
@@ -245,19 +239,16 @@ class Wordle():
             word += game.itemcget(tag, 'text')
         word = word.lower()
         if word not in self.words:
-            msg = f'{word} not in word list'
+            msg = f'"{word}" not in word list'
+            if self.settings.save:
+                msg +=f'\nSave "{word}" in dictionary? (Y/N)'
+                self.state = 'offerSave'
+                self.word = word
             canvas.itemconfigure(self.notice, text=msg, state=tk.NORMAL)      
             return
         if not self.hardMode(word):
             return
-        self.colorize(word)
-        self.guess += 1
-        if word == self.answer:
-            self.celebrate()
-        else:
-            self.letter = 0
-            if self.guess == settings.maxGuesses:
-                self.lose()
+        self.process(word)
                 
     def hardMode(self, word):
         if not self.settings.hardMode:
@@ -326,7 +317,17 @@ class Wordle():
         self.letter += 1
         
     def keyPressed(self, event):
+        canvas = self.canvas
         key = event.keysym
+        if self.state == 'offerSave':
+            if key in 'Yy':
+                self.saveWord()
+            elif key in 'Nn':
+                canvas.itemconfigure(self.notice, fill=FORE, text ='')
+                self.state = 'active'
+            else:
+                self.flashNotice()
+            return
         if key in ('Up', 'KP_Up'):
             self.scrollDown(-1)
             return
@@ -436,29 +437,32 @@ class Wordle():
         for idx, letter in enumerate(word):
             color = colors[idx]
             canvas.after(interval, self.revealLetter(idx, letter, color))
+            
+    def timeString(self):
+        def plural(x):
+            return '' if x==1 else 's'
+        elapsed = int(time.time() -self.start)
+        min_ = elapsed//60
+        sec = elapsed%60        
+        return f'\n{min_} minute{plural(min_)}  {sec} second{plural(sec)}\n\n'
                                 
     def celebrate(self):
         canvas = self.canvas
-        elapsed = int(time.time() -self.start)
-        minutes = elapsed//60
-        seconds = elapsed%60
         self.state = 'win'
         canvas.itemconfigure('button', state = tk.NORMAL)
         msg = f'{self.guess} guess'
         if self.guess > 1:            
             msg += 'es'
-        msg += f'\n{minutes} minutes {seconds} seconds\n\n'
+        msg += self.timeString()
         msg += 'Press P to play agian or Q to quit'
         canvas.itemconfigure(self.notice, state=tk.NORMAL, text = msg)
         
     def lose(self):
         canvas = self.canvas
-        elapsed = int(time.time() -self.start)
-        minutes = elapsed//60
-        seconds = elapsed%60
         self.state = 'lost'
         canvas.itemconfigure('button', state = tk.NORMAL)
-        msg = f'Out of guesses.  Word is "{self.answer}"\n{minutes} minutes {seconds} seconds\n\n'
+        msg = f'Out of guesses.  Word is "{self.answer}"'
+        msg += self.timeString()
         msg += 'Press P to play agian or Q to quit'
         canvas.itemconfigure(self.notice,  state=tk.NORMAL,
                              text = msg )     
@@ -507,7 +511,36 @@ class Wordle():
         text = canvas.create_text(x+ KEY_WIDTH, y+ KEY_HEIGHT//2, text='Delete', fill=FORE, font=('Helvetica', 20, 'bold'))
         handler = lambda entry: canvas.event_generate('<KeyPress>', keysym='Delete')
         for widget in (key, text):
-            canvas.tag_bind(widget, '<ButtonRelease-1>', handler)         
+            canvas.tag_bind(widget, '<ButtonRelease-1>', handler)   
+            
+    def saveWord(self):
+        self.words.add(self.word) 
+        pickle.dump(self.words, open(f'guesses{self.settings.wordLength}.set', 'wb'))
+        self.canvas.itemconfigure(self.notice, state=tk.HIDDEN, text='')
+        self.state = 'active'
+        self.process(self.word)
+    
+    def flashNotice(self):
+        notice = self.notice
+        canvas = self.canvas
+        def flash(count, old, new):
+            if count == 0:
+                return
+            canvas.itemconfigure(notice, fill= new)
+            canvas.after(500, lambda: flash(count-1, new, old))
+        flash(5, 'yellow', FORE)
+        
+    def process(self, word):
+        self.colorize(word)
+        self.guess += 1
+        if word == self.answer:
+            self.celebrate()
+        else:
+            self.letter = 0
+            if self.guess == self.settings.maxGuesses:
+                self.lose()        
+        
+        
 
 args = sys.argv
 
