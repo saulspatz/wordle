@@ -7,6 +7,14 @@ from collections import defaultdict, namedtuple
 import sys
 import time
 
+'''
+There are two main states: active and idle.  When in active state, the
+game is being played, and the wordLength, maxGuesses, and hardMode
+settings cannot be modified.  There is also an offerSave state when
+an unknown word has been entered and the save setting is True.
+This is a substate of the active state.
+'''
+
 Settings = namedtuple('Settings', 'wordLength maxGuesses hardMode interval save')
 defaultSettings = Settings(5, 6, False, 400, True)
 
@@ -144,11 +152,13 @@ class Wordle():
         
     def showControls(self, event):
         controls = self.controls
-        state = tk.DISABLED if self.state == 'active' else tk.NORMAL
+        state = tk.NORMAL if self.state == 'idle' else tk.DISABLED
         for widget in controls.frame.winfo_children():
             widget.configure(state=state)
         for widget in controls.animate:
             widget.configure(state=tk.NORMAL)
+        for widget in controls.save:
+            widget.configure(state=tk.NORMAL)        
         if state == tk.DISABLED and self.settings.hardMode:
             for widget in controls.hardMode:
                 widget.configure(state=tk.NORMAL)
@@ -166,7 +176,7 @@ class Wordle():
         hard = hardVar.get()
         save = saveVar.get()
         self.settings = Settings(length, tries, hard, speed, save)
-        if self.state not in ('active', 'offerSave'):
+        if self.state == 'idle':
             self.words = pickle.load(open(f'guesses{length}.set', 'rb'))
             self.answers = pickle.load(open(f'answers{length}.list', 'rb'))            
             self.drawGame()
@@ -334,7 +344,7 @@ class Wordle():
         elif key in ('Down', 'KP_Down'):
             self.scrollDown(1)
             return
-        if self.state != 'active':
+        if self.state == 'idle':
             if key not in 'PQpq':
                 return
             if key.upper() == 'P':
@@ -448,7 +458,7 @@ class Wordle():
                                 
     def celebrate(self):
         canvas = self.canvas
-        self.state = 'win'
+        self.state = 'idle'
         canvas.itemconfigure('button', state = tk.NORMAL)
         msg = f'{self.guess} guess'
         if self.guess > 1:            
@@ -459,7 +469,7 @@ class Wordle():
         
     def lose(self):
         canvas = self.canvas
-        self.state = 'lost'
+        self.state = 'idle'
         canvas.itemconfigure('button', state = tk.NORMAL)
         msg = f'Out of guesses.  Word is "{self.answer}"'
         msg += self.timeString()
