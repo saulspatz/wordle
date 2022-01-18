@@ -378,6 +378,7 @@ class Wordle():
         self.guess = 0
         self.letter = 0
         self.scrollTop = 0
+        self.game.yview_moveto(0)
         if self.settings.hardMode:
             self.known = set()  # known positions
             self.present = defaultdict(int)  # key=letter, value=count 
