@@ -61,8 +61,9 @@ BAD = rgb(200, 100, 100)
 UNKNOWN = 'LightGray'
 
 class Wordle():
-    def __init__(self, debug):
+    def __init__(self, debug=False, prompt=False):
         self.debug = debug
+        self.prompt = prompt
         root = self.root = tk.Tk()
         root.title("WORDLE")
         frame = self.frame = tk.Frame(root)
@@ -370,7 +371,10 @@ class Wordle():
         letters = self.letters
         squares = self.squares
         self.start = time.time()
-        self.answer = random.choice(self.answers)
+        if not self.prompt:
+            self.answer = random.choice(self.answers)
+        else:
+            self.answer = input("answer>")
         for q in self.qwerty.values():
             canvas.itemconfigure(q, fill=UNKNOWN)            
         if self.debug:
@@ -528,8 +532,9 @@ class Wordle():
         self.words.add(self.word) 
         pickle.dump(self.words, open(f'guesses{self.settings.wordLength}.set', 'wb'))
         self.canvas.itemconfigure(self.notice, state=tk.HIDDEN, text='')
+        if self.hardMode(self.word):
+            self.process(self.word)
         self.state = 'active'
-        self.process(self.word)
     
     def flashNotice(self):
         notice = self.notice
@@ -555,8 +560,7 @@ class Wordle():
 
 args = sys.argv
 
-try:
-    if args[1] in ('-d' '--debug'):
-        Wordle(True)
-except IndexError:
-    Wordle(False)
+d = '-d' in args
+p = '-p' in args
+Wordle(debug=d, prompt=p)
+    
