@@ -15,8 +15,7 @@ an unknown word has been entered and the save setting is True.
 This is a substate of the active state.
 '''
 
-Settings = namedtuple('Settings', 'wordLength maxGuesses hardMode interval save')
-defaultSettings = Settings(5, 6, False, 400, True)
+Settings = namedtuple('Settings', 'wordLength maxGuesses hardMode speed save')
 
 class MyCanvas(tk.Canvas):
     def __init__(self, parent, **kwargs):
@@ -74,35 +73,46 @@ class Wordle():
         self.controlFrame = tk.Frame(frame)
         self.controls = tk.Canvas(self.controlFrame, width=WIDTH, height=HEIGHT, background = BACK)
         self.controls.pack()
-        self.setDefaults()
+        self.getConfig()
         self.drawCanvas()       
         self.drawControls()        
         self.playFrame.grid(row = 0, column = 0)
         self.controlFrame.grid(row = 0, column = 0)
         self.state = 'idle'
         self.showControls(None)
+        root.wm_protocol ("WM_DELETE_WINDOW", self.saveConfig)
         root.mainloop()        
         
-    def setDefaults(self):
+    def getConfig(self):
         global lengthVar
         global guessVar
         global speedVar
         global hardVar
         global saveVar
-        
+
         lengthVar = tk.IntVar()
         guessVar = tk.IntVar()
         speedVar = tk.IntVar()
         hardVar = tk.IntVar()        
         saveVar = tk.IntVar()
         
-        lengthVar.set(defaultSettings.wordLength)
-        guessVar.set(defaultSettings.maxGuesses)
-        speedVar.set(defaultSettings.interval//100)
-        hardVar.set(defaultSettings.hardMode)
-        saveVar.set(defaultSettings.save)
+        try:
+            settings = pickle.load(open('config.bin', 'rb'))
+        except:
+            settings = Settings(5, 6, False, 4, True)
+            
         
-        self.settings = defaultSettings
+        lengthVar.set(settings.wordLength)
+        guessVar.set(settings.maxGuesses)
+        speedVar.set(settings.speed)
+        hardVar.set(settings.hardMode)
+        saveVar.set(settings.save)
+        
+        self.settings = settings
+        
+    def saveConfig(self):
+        pickle.dump(self.settings, open('config.bin', 'wb'))
+        exit(0)
                 
     def drawCanvas(self):
         canvas = self.canvas
@@ -170,12 +180,13 @@ class Wordle():
         global guessVar
         global speedVar
         global hardVar
+        global saveVar
         
         length = lengthVar.get()
         tries = guessVar.get()
-        speed = 100*speedVar.get()
         hard = hardVar.get()
         save = saveVar.get()
+        speed = speedVar.get()
         self.settings = Settings(length, tries, hard, speed, save)
         if self.state == 'idle':
             self.words = pickle.load(open(f'guesses{length}.set', 'rb'))
@@ -352,6 +363,7 @@ class Wordle():
                 self.play()
                 return
             if key.upper() == 'Q':
+                pickle.dump(self.settings, open('config.bin', 'wb'))
                 self.root.destroy()
         if not key.isalpha():
             return
@@ -444,7 +456,7 @@ class Wordle():
                     self.present[word[i]] += 1
                 
         #Animated coloring
-        interval = settings.interval
+        interval = 100*settings.speed
         for i in range(settings.wordLength):
             canvas.itemconfigure(letters[g,i], text = '')
             canvas.update()
