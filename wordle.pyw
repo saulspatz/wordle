@@ -298,6 +298,7 @@ class Wordle():
             return
         top = self.scrollTop
         maxTop = self.settings.maxGuesses - ROWS 
+
         # Can't scroll down pass last row
         
         if delta > 0 and top == maxTop:
