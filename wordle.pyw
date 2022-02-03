@@ -9,10 +9,13 @@ import time
 
 '''
 There are two main states: active and idle.  When in active state, the
-game is being played, and the wordLength, maxGuesses, and hardMode
-settings cannot be modified.  There is also an offerSave state when
-an unknown word has been entered and the save setting is True.
-This is a substate of the active state.
+game is being played, and the wordLength and maxGuesses
+settings cannot be modified.  When in active state, it is possible
+to downgrade the mode from extreme to hard or normal, or from
+hard to normal, but not to upgrade.
+
+There is also an offerSave state when an unknown word has been 
+entered and the save setting is True.  This is a substate of the active state.
 '''
 
 Settings = namedtuple('Settings', 'wordLength maxGuesses mode speed save')
@@ -164,18 +167,25 @@ class Wordle():
     def showControls(self, event):
         controls = self.controls
         state = tk.NORMAL if self.state == 'idle' else tk.DISABLED
-        for widget in controls.frame.winfo_children():
+        for widget in controls.winfo_children():
             try:               
                 widget.configure(state=state)
             except tk.TclError:    # Frame has no state
                 pass
+        for widget in controls.mode:
+            widget.configure(state=state)
         for widget in controls.animate:
             widget.configure(state=tk.NORMAL)
         for widget in controls.save:
-            widget.configure(state=tk.NORMAL)        
+            widget.configure(state=tk.NORMAL)
+        mode = self.settings.mode
         if state == tk.DISABLED:
-            for widget in controls.mode:
-                widget.configure(state=tk.NORMAL)
+            controls.normal.configure(state=tk.NORMAL)
+            if mode >= 1:
+                controls.hard.configure(state=tk.NORMAL)
+            if mode == 2:
+                controls.extreme.configure(state=tk.NORMAL)
+                
         self.controlFrame.tkraise()
         
     def getControls(self, event):
@@ -247,6 +257,9 @@ class Wordle():
         label.grid(row = 3, column=0, sticky='EW', pady = pady, padx=padx)
         modeFrame.grid(row = 3, column=1, sticky='EW', pady = pady, padx=padx) 
         controls.mode = {normal, hard, extreme}
+        controls.normal = normal
+        controls.hard = hard
+        controls.extreme = extreme
         
         label = tk.Label(frame, text = 'Offer to Save\nUnknown Words', fg = FORE, bg = BACK, font = ('Helvetica', 16))
         check = tk.Checkbutton(frame, variable = saveVar)
@@ -277,9 +290,16 @@ class Wordle():
                 self.word = word
             canvas.itemconfigure(self.notice, text=msg, state=tk.NORMAL)      
             return
+        if not self.extremeMode(word):
+            return
         if not self.hardMode(word):
             return
         self.process(word)
+        
+    def extremeMode(self, word):
+        if self.settings.mode < 2:
+            return True
+        return True
                 
     def hardMode(self, word):
         if self.settings.mode == 0:
@@ -290,7 +310,7 @@ class Wordle():
                 msg = f'Hard mode: Letter {1+position} must be "{letter.upper()}"'
                 self.canvas.itemconfigure(self.notice, text=msg, state=tk.NORMAL) 
                 return False
-        for letter, need in self.present.items():
+        for letter, need in self.minimum.items():
             have = word.count(letter)
             if have < need:
                 msg = f'Hard mode: Must have at least {need} of "{letter.upper()}"'
@@ -343,7 +363,7 @@ class Wordle():
             return
         self.showGuess()
         
-        # Don't know why I have to make the state normal; I never maki it hidden 
+        # Don't know why I have to make the state normal; I never make it hidden 
         game.itemconfigure(f'L{self.guess}{self.letter}', text = c, state=tk.NORMAL)
         self.letter += 1
         
@@ -406,7 +426,7 @@ class Wordle():
         self.game.yview_moveto(0)
         if self.settings.mode>0:
             self.known = set()  # known positions
-            self.present = defaultdict(int)  # key=letter, value=count 
+            self.minimum = defaultdict(int)  # key=letter, value=count 
         canvas.itemconfigure(self.notice, text='', state=tk.HIDDEN) 
         canvas.itemconfigure('button', state=tk.HIDDEN)
         for row in range(settings.maxGuesses):
@@ -459,10 +479,10 @@ class Wordle():
                 colors[i] = BAD
                 
         if settings.mode>0:
-            self.present.clear()
+            self.minimum.clear()
             for i, color in enumerate(colors):
                 if color != BAD:
-                    self.present[word[i]] += 1
+                    self.minimum[word[i]] += 1
                 
         #Animated coloring
         interval = 100*settings.speed
