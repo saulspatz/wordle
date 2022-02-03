@@ -15,7 +15,7 @@ an unknown word has been entered and the save setting is True.
 This is a substate of the active state.
 '''
 
-Settings = namedtuple('Settings', 'wordLength maxGuesses hardMode speed save')
+Settings = namedtuple('Settings', 'wordLength maxGuesses mode speed save')
 
 class MyCanvas(tk.Canvas):
     def __init__(self, parent, **kwargs):
@@ -87,25 +87,25 @@ class Wordle():
         global lengthVar
         global guessVar
         global speedVar
-        global hardVar
+        global modeVar
         global saveVar
 
         lengthVar = tk.IntVar()
         guessVar = tk.IntVar()
         speedVar = tk.IntVar()
-        hardVar = tk.IntVar()        
+        modeVar = tk.IntVar()        
         saveVar = tk.IntVar()
         
         try:
             settings = pickle.load(open('config.bin', 'rb'))
         except:
-            settings = Settings(5, 6, False, 4, True)
+            settings = Settings(5, 6, 0, 4, True)
             
         
         lengthVar.set(settings.wordLength)
         guessVar.set(settings.maxGuesses)
         speedVar.set(settings.speed)
-        hardVar.set(settings.hardMode)
+        modeVar.set(settings.mode)
         saveVar.set(settings.save)
         
         self.settings = settings
@@ -165,13 +165,16 @@ class Wordle():
         controls = self.controls
         state = tk.NORMAL if self.state == 'idle' else tk.DISABLED
         for widget in controls.frame.winfo_children():
-            widget.configure(state=state)
+            try:               
+                widget.configure(state=state)
+            except tk.TclError:    # Frame has no state
+                pass
         for widget in controls.animate:
             widget.configure(state=tk.NORMAL)
         for widget in controls.save:
             widget.configure(state=tk.NORMAL)        
-        if state == tk.DISABLED and self.settings.hardMode:
-            for widget in controls.hardMode:
+        if state == tk.DISABLED:
+            for widget in controls.mode:
                 widget.configure(state=tk.NORMAL)
         self.controlFrame.tkraise()
         
@@ -184,10 +187,10 @@ class Wordle():
         
         length = lengthVar.get()
         tries = guessVar.get()
-        hard = hardVar.get()
+        mode = modeVar.get()
         save = saveVar.get()
         speed = speedVar.get()
-        self.settings = Settings(length, tries, hard, speed, save)
+        self.settings = Settings(length, tries, mode, speed, save)
         if self.state == 'idle':
             self.words = pickle.load(open(f'guesses{length}.set', 'rb'))
             self.answers = pickle.load(open(f'answers{length}.list', 'rb'))            
@@ -199,7 +202,7 @@ class Wordle():
         global lengthVar
         global guessVar
         global speedVar
-        global hardVar
+        global modeVar
         global saveVar
         
         controls = self.controls
@@ -233,11 +236,17 @@ class Wordle():
         scale.grid(row = 2, column=1, sticky='EW', pady = pady, padx=padx)    
         controls.animate = {label, scale}
         
-        label = tk.Label(frame, text = 'Hard Mode', fg = FORE, bg = BACK, font = ('Helvetica', 16))
-        check = tk.Checkbutton(frame, variable = hardVar)
+        modeFrame = tk.Frame(frame, bd=2, relief=tk.SUNKEN )
+        label = tk.Label(frame, text = 'Mode',  fg = FORE, bg = BACK, font=('Helvetica', 16))
+        normal = tk.Radiobutton(modeFrame, variable=modeVar, value=0, text = 'Normal', font=('Helvetica', 14))
+        normal.grid(row=0, column=0, sticky=tk.W)
+        hard = tk.Radiobutton(modeFrame, variable=modeVar, value=1, text = 'Hard', font=('Helvetica', 14))
+        hard.grid(row=1, column=0, sticky=tk.W)
+        extreme = tk.Radiobutton(modeFrame, variable=modeVar, value=2, text = 'Extreme', font=('Helvetica', 14))
+        extreme.grid(row=2, column=0, sticky=tk.W)
         label.grid(row = 3, column=0, sticky='EW', pady = pady, padx=padx)
-        check.grid(row = 3, column=1, sticky='EW', pady = pady, padx=padx)   
-        controls.hardMode = {label, check}
+        modeFrame.grid(row = 3, column=1, sticky='EW', pady = pady, padx=padx) 
+        controls.mode = {normal, hard, extreme}
         
         label = tk.Label(frame, text = 'Offer to Save\nUnknown Words', fg = FORE, bg = BACK, font = ('Helvetica', 16))
         check = tk.Checkbutton(frame, variable = saveVar)
@@ -273,7 +282,7 @@ class Wordle():
         self.process(word)
                 
     def hardMode(self, word):
-        if not self.settings.hardMode:
+        if self.settings.mode == 0:
             return True
         for position in self.known:
             letter = self.answer[position]
@@ -395,7 +404,7 @@ class Wordle():
         self.letter = 0
         self.scrollTop = 0
         self.game.yview_moveto(0)
-        if self.settings.hardMode:
+        if self.settings.mode>0:
             self.known = set()  # known positions
             self.present = defaultdict(int)  # key=letter, value=count 
         canvas.itemconfigure(self.notice, text='', state=tk.HIDDEN) 
@@ -429,7 +438,7 @@ class Wordle():
         colors = settings.wordLength*[None]
         answer = self.answer
         correct = [i for i in range(settings.wordLength) if word[i]==answer[i] ]
-        if settings.hardMode:
+        if settings.mode>0:
             self.known = set(correct)
         g = self.guess
         for c in correct:
@@ -449,7 +458,7 @@ class Wordle():
             if i not in correct + others:
                 colors[i] = BAD
                 
-        if settings.hardMode:
+        if settings.mode>0:
             self.present.clear()
             for i, color in enumerate(colors):
                 if color != BAD:
@@ -568,8 +577,6 @@ class Wordle():
             if self.guess == self.settings.maxGuesses:
                 self.lose()        
         
-        
-
 args = sys.argv
 
 d = '-d' in args
