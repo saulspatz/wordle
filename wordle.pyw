@@ -115,6 +115,7 @@ class Wordle():
         
     def saveConfig(self):
         pickle.dump(self.settings, open('config.bin', 'wb'))
+        self.root.destroy()
         exit(0)
                 
     def drawCanvas(self):
@@ -299,8 +300,24 @@ class Wordle():
     def extremeMode(self, word):
         if self.settings.mode < 2:
             return True
+        for letter in word:
+            if letter in self.missing:
+                msg = f'Extreme mode: "{letter.upper()}" not in word'
+                self.canvas.itemconfigure(self.notice, text=msg, state=tk.NORMAL)
+                return False
+        for position, exclude in self.excluded.items():
+            letter = word[position]
+            if letter in exclude:
+                msg = f'Extreme mode: Letter {1+position} cannot be "{letter.upper()}"'
+                self.canvas.itemconfigure(self.notice, text=msg, state=tk.NORMAL)
+                return False
+        for letter, count in self.exact.items():
+            if word.count(letter) != count:
+                msg = f'Extreme mode: Word must have exactly {count} of "{letter.upper()}"'
+                self.canvas.itemconfigure(self.notice, text=msg, state=tk.NORMAL)
+                return False
         return True
-                
+                        
     def hardMode(self, word):
         if self.settings.mode == 0:
             return True
@@ -427,6 +444,12 @@ class Wordle():
         if self.settings.mode>0:
             self.known = set()  # known positions
             self.minimum = defaultdict(int)  # key=letter, value=count 
+        if self.settings.mode == 2:
+            self.exact = dict() # key = letter, value = count
+            self.missing = set()  # letters that do not appear in the word
+            self.excluded = defaultdict(set) # key = position, 
+                                                              #    value = excluded (yellow) letters
+            
         canvas.itemconfigure(self.notice, text='', state=tk.HIDDEN) 
         canvas.itemconfigure('button', state=tk.HIDDEN)
         for row in range(settings.maxGuesses):
@@ -481,8 +504,17 @@ class Wordle():
         if settings.mode>0:
             self.minimum.clear()
             for i, color in enumerate(colors):
+                letter = word[i]
                 if color != BAD:
-                    self.minimum[word[i]] += 1
+                    self.minimum[letter] += 1
+                if color == CLOSE:
+                    self.excluded[i].add(letter)
+                if color == BAD:
+                    count = self.answer.count(letter)
+                    if count == 0:
+                        self.missing.add(letter)
+                    else:
+                        self.exact[letter] = count
                 
         #Animated coloring
         interval = 100*settings.speed
