@@ -444,7 +444,6 @@ class Wordle():
         if self.settings.mode>0:
             self.known = set()  # known positions
             self.minimum = defaultdict(int)  # key=letter, value=count 
-        if self.settings.mode == 2:
             self.exact = dict() # key = letter, value = count
             self.missing = set()  # letters that do not appear in the word
             self.excluded = defaultdict(set) # key = position, 
