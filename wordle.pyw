@@ -542,7 +542,7 @@ class Wordle():
         if self.guess > 1:            
             msg += 'es'
         msg += self.timeString()
-        msg += 'Press P to play agian or Q to quit'
+        msg += 'Press P to play again or Q to quit'
         canvas.itemconfigure(self.notice, state=tk.NORMAL, text = msg)
         
     def lose(self):
