@@ -6,6 +6,7 @@ import pickle
 from collections import defaultdict, namedtuple
 import sys
 import time
+import re
 
 '''
 There are two main states: active and idle.  When in active state, the
@@ -97,7 +98,7 @@ class Wordle():
         guessVar = tk.IntVar()
         speedVar = tk.IntVar()
         modeVar = tk.IntVar()        
-        saveVar = tk.IntVar()
+        saveVar = tk.IntVar()        
         
         try:
             settings = pickle.load(open('config.bin', 'rb'))
@@ -441,13 +442,12 @@ class Wordle():
         self.letter = 0
         self.scrollTop = 0
         self.game.yview_moveto(0)
-        if self.settings.mode>0:
-            self.known = set()  # known positions
-            self.minimum = defaultdict(int)  # key=letter, value=count 
-            self.exact = dict() # key = letter, value = count
-            self.missing = set()  # letters that do not appear in the word
-            self.excluded = defaultdict(set) # key = position, 
-                                                              #    value = excluded (yellow) letters
+        self.known = set()  # known positions
+        self.minimum = defaultdict(int)  # key=letter, value=count 
+        self.exact = dict() # key = letter, value = count
+        self.missing = ''  # letters that do not appear in the word
+        self.excluded = defaultdict(str) # key = position, 
+                                            # value = excluded (yellow) letters
             
         canvas.itemconfigure(self.notice, text='', state=tk.HIDDEN) 
         canvas.itemconfigure('button', state=tk.HIDDEN)
@@ -479,14 +479,12 @@ class Wordle():
         used = defaultdict(int)
         colors = settings.wordLength*[None]
         answer = self.answer
-        correct = [i for i in range(settings.wordLength) if word[i]==answer[i] ]
-        if settings.mode>0:
-            self.known = set(correct)
+        known = self.known = {i for i in range(settings.wordLength) if word[i]==answer[i]}
         g = self.guess
-        for c in correct:
+        for c in known:
             colors[c] = GOOD
             used[word[c]] += 1
-        others = [i for i in range(settings.wordLength) if i not in correct and word[i] in answer]
+        others = {i for i in range(settings.wordLength) if i not in known and word[i] in answer}
         available = {}
         for i in others:
             c = word[i]
@@ -497,24 +495,29 @@ class Wordle():
             available[c] -= 1
             
         for i in range(settings.wordLength):
-            if i not in correct + others:
+            if i not in known | others:
                 colors[i] = BAD
                 
-        if settings.mode>0:
-            self.minimum.clear()
-            for i, color in enumerate(colors):
-                letter = word[i]
-                if color != BAD:
-                    self.minimum[letter] += 1
-                if color == CLOSE:
-                    self.excluded[i].add(letter)
-                if color == BAD:
-                    count = self.answer.count(letter)
-                    if count == 0:
-                        self.missing.add(letter)
-                    else:
-                        self.exact[letter] = count
-                
+        minimum = self.minimum
+        excluded = self.excluded
+        exact = self.exact
+
+        minimum.clear()
+        for i, color in enumerate(colors):
+            letter = word[i]
+            if color != BAD:
+                minimum[letter] += 1
+            if color == CLOSE:
+                excluded[i] += letter
+            if color == BAD:
+                count = self.answer.count(letter)
+                if count == 0:
+                    self.missing += letter
+                else:
+                    exact[letter] = count
+        self.hardCount(known)
+        self.extremeCount(known)
+
         #Animated coloring
         interval = 100*settings.speed
         for i in range(settings.wordLength):
@@ -524,6 +527,40 @@ class Wordle():
         for idx, letter in enumerate(word):
             color = colors[idx]
             canvas.after(interval, self.revealLetter(idx, letter, color))
+
+    def extremeCount(self, correct):
+        missing = self.missing
+        length = self.settings.wordLength
+        excluded = self.excluded
+
+        regexes = [self.answer[i] if i in correct 
+                   else f'[^{missing}{excluded[i]}]' for i in range(length)]
+        pattern = re.compile(''.join(regexes))
+        candidates = [w for w in self.words if pattern.match(w)]
+        for letter, count in self.minimum.items():
+            candidates = [w for w in candidates if w.count(letter) >= count]
+        for letter, count in self.exact.items():
+            candidates = [w for w in candidates if w.count(letter) == count]
+        print(len(candidates))
+        if len(candidates) <= 20:
+            print('extreme')
+            for c in candidates: print(c)
+
+    def hardCount(self, correct):
+        length = self.settings.wordLength
+
+        regexes = [self.answer[i] if i in correct else '.' 
+                   for i in range(length)]
+        pattern = re.compile(''.join(regexes))
+        candidates = [w for w in self.words if pattern.match(w)]
+        for letter, count in self.minimum.items():
+            candidates = [w for w in candidates if w.count(letter)>= count]
+        print(len(candidates))
+        if len(candidates) <= 20:
+            print('hard')
+            for c in candidates: print(c)
+        return(len(candidates))
+
             
     def timeString(self):
         def plural(x):
