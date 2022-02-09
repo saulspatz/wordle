@@ -541,10 +541,11 @@ class Wordle():
             candidates = [w for w in candidates if w.count(letter) >= count]
         for letter, count in self.exact.items():
             candidates = [w for w in candidates if w.count(letter) == count]
-        print(len(candidates))
-        if len(candidates) <= 20:
-            print('extreme')
-            for c in candidates: print(c)
+        # print(len(candidates))
+        # if len(candidates) <= 20:
+        #     print('extreme')
+        #     for c in candidates: print(c)
+        return len(candidates)
 
     def hardCount(self, correct):
         length = self.settings.wordLength
@@ -555,11 +556,11 @@ class Wordle():
         candidates = [w for w in self.words if pattern.match(w)]
         for letter, count in self.minimum.items():
             candidates = [w for w in candidates if w.count(letter)>= count]
-        print(len(candidates))
-        if len(candidates) <= 20:
-            print('hard')
-            for c in candidates: print(c)
-        return(len(candidates))
+        # print(len(candidates))
+        # if len(candidates) <= 20:
+        #     print('hard')
+        #     for c in candidates: print(c)
+        return len(candidates)
 
             
     def timeString(self):
