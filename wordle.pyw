@@ -447,7 +447,7 @@ class Wordle():
         self.exact = dict() # key = letter, value = count
         self.missing = ''  # letters that do not appear in the word
         self.excluded = defaultdict(str) # key = position, 
-                                            # value = excluded (yellow) letters
+                                         # value = excluded (yellow) letters
             
         canvas.itemconfigure(self.notice, text='', state=tk.HIDDEN) 
         canvas.itemconfigure('button', state=tk.HIDDEN)
@@ -515,6 +515,7 @@ class Wordle():
                     self.missing += letter
                 else:
                     exact[letter] = count
+                    excluded[i] += letter
         self.hardCount(known)
         self.extremeCount(known)
 
